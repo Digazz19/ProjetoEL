@@ -1,0 +1,37 @@
+<launch>
+
+  <arg name="use_sim" default="false"/>
+
+  <let name="robot_name" value="kobuki"/>
+
+  <set_env name="RMW_IMPLEMENTATION" value="rmw_fastrtps_cpp"/>
+
+  <group scoped="true">
+
+      <node pkg="demo_nodes_cpp"
+            exec="talker"
+            name="talker_node">
+
+          <param name="rate" value="10"/>
+
+          <remap from="/chatter" to="/robot/chatter"/>
+
+          <env name="DEBUG" value="true"/>
+
+      </node>
+
+      <node pkg="demo_nodes_cpp"
+            exec="listener"
+            name="listener_node"/>
+
+  </group>
+
+  <include file="sensors.launch.xml">
+      <arg name="sensor_rate" value="50"/>
+  </include>
+
+  <executable cmd="ls -las" cwd="/home"/>
+
+  <unset_env name="OLD_ENV"/>
+
+</launch>
