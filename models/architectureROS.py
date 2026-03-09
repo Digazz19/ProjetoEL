@@ -18,7 +18,8 @@ class Node:
     def __init__(self, name, package, exec,
                  namespace=None,
                  remappings=None,
-                 params=None):
+                 params=None,
+                 args=None):
 
         self.name = name
         self.package = package
@@ -26,6 +27,7 @@ class Node:
         self.namespace = namespace
         self.remappings = remappings or []
         self.params = params or []
+        self.args = args
 
     def __repr__(self):
         return f"""
@@ -35,7 +37,8 @@ Node(
  exec={self.exec},
  namespace={self.namespace},
  remaps={self.remappings},
- params={self.params}
+ params={self.params},
+ args={self.args}
 )
 """
 
