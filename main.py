@@ -3,7 +3,7 @@ from parsers.yaml.parser import YAMLLaunchParser
 
 def print_architecture(architecture, name=""):
     print(f"\n=== ARQUITETURA EXTRAÍDA ({name}) ===\n")
-    for node in architecture.nodes.values():
+    for node in architecture.nodes:
         print(node)
 
     print("\nARGS:", architecture.args)
@@ -21,8 +21,8 @@ print("\n=== PARSE TREE ===\n")
 print(xml_tree.pretty())
 
 # TEST YAML
-##yaml_parser = YAMLLaunchParser()
-##yaml_tree, yaml_architecture = yaml_parser.parse("examples/test.yaml")
-##print_architecture(yaml_architecture, "YAML")
-##print("\n=== PARSE TREE ===\n")
-##print(yaml_tree.pretty())
+yaml_parser = YAMLLaunchParser()
+yaml_tree, yaml_architecture = yaml_parser.parse("examples/test.yaml")
+print_architecture(yaml_architecture, "YAML")
+print("\n=== PARSE TREE ===\n")
+print(yaml_tree.pretty())
