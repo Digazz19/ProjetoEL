@@ -1,18 +1,26 @@
-import ast
+from lark import Lark
+from lark.indenter import PythonIndenter
 
-from .visitor import PythonLaunchVisitor
-
-# constrói a AST usando ast.parse() ; cria um visitor (PythonLaunchVisitor) 
-# percorre a árvore sintática com esse visitor e devolve a arquitetura extraída.
+from .grammar import grammarPython
+from .transformerPython import LaunchPythonTransformer
 
 class PythonLaunchParser:
+    def __init__(self):
+        self.parser = Lark(
+            grammarPython,
+            parser="lalr",
+            postlex=PythonIndenter(),
+            start="start",
+        )
 
     def parse(self, file_path):
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
 
-        tree = ast.parse(text, filename=file_path)
-        visitor = PythonLaunchVisitor()
-        visitor.visit(tree)
+        if not text.endswith("\n"):
+            text += "\n"
 
-        return tree, visitor.architecture
+        tree = self.parser.parse(text)
+        transformer = LaunchPythonTransformer()
+        architecture = transformer.transform(tree)
+        return tree, architecture
