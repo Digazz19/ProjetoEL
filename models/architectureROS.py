@@ -1,7 +1,7 @@
 class ArchitectureROS:
 
     def __init__(self):
-        self.nodes = {}
+        self.nodes = [] 
         self.args = {}
         self.lets = {}
         self.includes = []
@@ -10,7 +10,7 @@ class ArchitectureROS:
         self.unset_env = []
 
     def add_node(self, node):
-        self.nodes[node.name] = node
+        self.nodes.append(node)
 
 
 class Node:

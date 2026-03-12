@@ -10,7 +10,7 @@ def print_architecture(architecture, name=""):
     print(f"\n=== ARQUITETURA EXTRAÍDA ({name}) ===\n")
 
     if architecture.nodes:
-        for i, node in enumerate(architecture.nodes.values(), start=1):
+        for i, node in enumerate(architecture.nodes, start=1):
             print(f"[NODE {i}]")
             print(node)
             print()
