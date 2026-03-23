@@ -1,10 +1,10 @@
-from models.architectureROS import ArchitectureROS, Node, Param
+from models.architectureROS import ArchitectureROS, Node, Param, Remapping
 from lark import Transformer
+
 
 class LaunchYAMLTransformer(Transformer):
 
     def start(self, items):
-        # Find the ArchitectureROS object, ignoring any leading/trailing _NL tokens
         for item in items:
             if isinstance(item, ArchitectureROS):
                 return item
@@ -31,31 +31,35 @@ class LaunchYAMLTransformer(Transformer):
                 elif t == "executable":
                     arch.executables.append(item)
             elif isinstance(item, list):
-                # Now that lists (groups) make it here, process their contents!
                 for sub in item:
                     process(sub)
 
         for item in items:
             process(item)
 
+        # Resolver namespaces e construir grafo de tópicos após parsing completo
+        arch.resolve()
         return arch
 
-    def element(self, items): 
+    def element(self, items):
         for item in items:
-            # Added `list` here so groups don't get dropped!
-            if isinstance(item, (dict, Node, list)): return item
+            if isinstance(item, (dict, Node, list)):
+                return item
 
-    def node_content(self, items): 
+    def node_content(self, items):
         for item in items:
-            if isinstance(item, (dict, tuple)): return item
+            if isinstance(item, (dict, tuple)):
+                return item
 
-    def include_content(self, items): 
+    def include_content(self, items):
         for item in items:
-            if isinstance(item, (dict, tuple)): return item
+            if isinstance(item, (dict, tuple)):
+                return item
 
-    def exec_content(self, items): 
+    def exec_content(self, items):
         for item in items:
-            if isinstance(item, (dict, tuple)): return item
+            if isinstance(item, (dict, tuple)):
+                return item
 
     def node(self, items):
         attrs = {}
@@ -64,6 +68,7 @@ class LaunchYAMLTransformer(Transformer):
         for item in items:
             if isinstance(item, dict):
                 if item["type"] == "remap":
+                    # Agora produz lista de Remapping em vez de tuplos
                     remaps.extend(item["data"])
                 elif item["type"] == "param":
                     params.extend(item["data"])
@@ -88,7 +93,11 @@ class LaunchYAMLTransformer(Transformer):
 
     def arg(self, items):
         attrs = dict([i for i in items if isinstance(i, tuple)])
-        return {"type": "arg", "name": attrs.get("name"), "default": attrs.get("default", attrs.get("value"))}
+        return {
+            "type": "arg",
+            "name": attrs.get("name"),
+            "default": attrs.get("default", attrs.get("value"))
+        }
 
     def let(self, items):
         attrs = dict([i for i in items if isinstance(i, tuple)])
@@ -111,7 +120,12 @@ class LaunchYAMLTransformer(Transformer):
             elif isinstance(item, tuple):
                 attrs[item[0]] = item[1]
 
-        return {"type": "executable", "cmd": attrs.get("cmd"), "cwd": attrs.get("cwd"), "env": envs}
+        return {
+            "type": "executable",
+            "cmd": attrs.get("cmd"),
+            "cwd": attrs.get("cwd"),
+            "env": envs
+        }
 
     def param(self, items):
         valid = [i for i in items if isinstance(i, list)]
@@ -119,18 +133,31 @@ class LaunchYAMLTransformer(Transformer):
         return {"type": "param", "data": params}
 
     def remap(self, items):
+        """Produz objetos Remapping tipados em vez de tuplos anónimos."""
         valid = [i for i in items if isinstance(i, list)]
-        remaps = [(dict(i).get("from"), dict(i).get("to")) for i in valid]
-        return {"type": "remap", "data": remaps}
+        remappings = [
+            Remapping(
+                src=dict(i).get("from"),
+                dst=dict(i).get("to")
+            )
+            for i in valid
+        ]
+        return {"type": "remap", "data": remappings}
 
     def env(self, items):
         valid = [i for i in items if isinstance(i, list)]
-        envs = [{"type": "env", "name": dict(i).get("name"), "value": dict(i).get("value")} for i in valid]
+        envs = [
+            {"type": "env", "name": dict(i).get("name"), "value": dict(i).get("value")}
+            for i in valid
+        ]
         return {"type": "env", "data": envs}
 
     def args(self, items):
         valid = [i for i in items if isinstance(i, list)]
-        args = [{"type": "arg", "name": dict(i).get("name"), "value": dict(i).get("value")} for i in valid]
+        args = [
+            {"type": "arg", "name": dict(i).get("name"), "value": dict(i).get("value")}
+            for i in valid
+        ]
         return {"type": "args", "data": args}
 
     def dict_item(self, items):
@@ -139,8 +166,8 @@ class LaunchYAMLTransformer(Transformer):
     def attribute(self, items):
         key = str(items[0])
         value = str(items[1])
-        # remove quotes from strings if they exist
-        if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        if (value.startswith('"') and value.endswith('"')) or \
+           (value.startswith("'") and value.endswith("'")):
             value = value[1:-1]
         return (key, value)
 
@@ -150,7 +177,7 @@ class LaunchYAMLTransformer(Transformer):
             package=attrs.get("pkg"),
             exec=attrs.get("exec"),
             namespace=attrs.get("namespace"),
-            remappings=remaps,
+            remappings=remaps,   # agora lista de Remapping
             params=params,
-            args=attrs.get("args", attrs.get("ros_args")) 
+            args=attrs.get("args", attrs.get("ros_args"))
         )

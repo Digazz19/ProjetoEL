@@ -56,7 +56,7 @@ def main():
     print("\n=== PARSE TREE ===\n")
     print(tree.pretty())
 
-    print_architecture(architecture, mode.upper())
+    architecture.print_summary()
 
 
 if __name__ == "__main__":

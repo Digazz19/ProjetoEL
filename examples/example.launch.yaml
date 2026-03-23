@@ -1,45 +1,63 @@
 launch:
   - arg:
-      name: "use_sim"
+      name: use_sim
       default: "false"
 
   - let:
-      name: "robot_name"
-      value: "kobuki"
+      name: robot_name
+      value: kobuki
 
   - set_env:
-      name: "RMW_IMPLEMENTATION"
-      value: "rmw_fastrtps_cpp"
+      name: RMW_IMPLEMENTATION
+      value: rmw_fastrtps_cpp
+
+  - node:
+      name: controller
+      pkg: nav2
+      exec: controller_server
 
   - group:
-      - node:
-          pkg: "demo_nodes_cpp"
-          exec: "talker"
-          name: "talker_node"
-          param:
-            - name: "rate"
-              value: "10"
-          remap:
-            - from: "/chatter"
-              to: "/robot/chatter"
-          env:
-            - name: "DEBUG"
-              value: "true"
+    - node:
+        name: talker_node
+        pkg: demo_nodes_cpp
+        exec: talker
+        namespace: robot1
+        param:
+          - name: rate
+            value: "10"
+        remap:
+          - from: chatter
+            to: robot_chat
+          - from: /chatter_global
+            to: /global/chat
 
-      - node:
-          pkg: "demo_nodes_cpp"
-          exec: "listener"
-          name: "listener_node"
+    - node:
+        name: listener_node
+        pkg: demo_nodes_cpp
+        exec: listener
+        namespace: robot1
+        remap:
+          - from: chatter
+            to: robot_chat
+
+    - node:
+        name: lidar
+        pkg: sensor_pkg
+        exec: lidar_driver
+        namespace: sensors
+        remap:
+          - from: scan
+            to: base_scan
 
   - include:
-      file: "sensors.launch.xml"
+      file: sensors.launch.xml
       arg:
-        - name: "sensor_rate"
+        - name: sensor_rate
           value: "50"
 
   - executable:
       cmd: "ls -las"
-      cwd: "/home"
+      cwd: /home
 
   - unset_env:
-      name: "OLD_ENV"
+      name: OLD_ENV

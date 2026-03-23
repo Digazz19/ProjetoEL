@@ -1,5 +1,6 @@
-from models.architectureROS import ArchitectureROS, Node, Param
+from models.architectureROS import ArchitectureROS, Node, Remapping, Param
 from lark import Transformer
+
 
 class LaunchXMLTransformer(Transformer):
 
@@ -33,8 +34,10 @@ class LaunchXMLTransformer(Transformer):
         for item in items:
             process(item)
 
+        # Resolver namespaces e construir grafo de tópicos após parsing completo
+        arch.resolve()
         return arch
-    
+
     def element(self, items):
         return items[0]
 
@@ -55,11 +58,10 @@ class LaunchXMLTransformer(Transformer):
         for item in items:
             if isinstance(item, dict):
                 if item["type"] == "remap":
-                    remaps.append((item["from"], item["to"]))
+                    # Agora produz Remapping em vez de tuplo
+                    remaps.append(item["remapping"])
                 elif item["type"] == "param":
-                    params.append(
-                        Param(item["name"], item["value"])
-                    )
+                    params.append(Param(item["name"], item["value"]))
             elif isinstance(item, tuple):
                 attrs[item[0]] = item[1]
 
@@ -69,8 +71,11 @@ class LaunchXMLTransformer(Transformer):
         attrs = dict(items)
         return {
             "type": "remap",
-            "from": attrs.get("from"),
-            "to": attrs.get("to")
+            # Objeto Remapping tipado em vez de tuplo anónimo
+            "remapping": Remapping(
+                src=attrs.get("from"),
+                dst=attrs.get("to")
+            )
         }
 
     def param(self, items):
@@ -88,7 +93,7 @@ class LaunchXMLTransformer(Transformer):
             "name": attrs.get("name"),
             "value": attrs.get("value")
         }
-    
+
     def executable(self, items):
         attrs = {}
         envs = []
@@ -104,7 +109,7 @@ class LaunchXMLTransformer(Transformer):
             "cwd": attrs.get("cwd"),
             "env": envs
         }
-    
+
     def env(self, items):
         attrs = dict(items)
         return {
@@ -112,7 +117,7 @@ class LaunchXMLTransformer(Transformer):
             "name": attrs.get("name"),
             "value": attrs.get("value")
         }
-    
+
     def set_env(self, items):
         attrs = dict(items)
         return {
@@ -120,7 +125,7 @@ class LaunchXMLTransformer(Transformer):
             "name": attrs.get("name"),
             "value": attrs.get("value")
         }
-    
+
     def unset_env(self, items):
         attrs = dict(items)
         return {
@@ -151,7 +156,6 @@ class LaunchXMLTransformer(Transformer):
             "default": attrs.get("default")
         }
 
-
     def group(self, items):
         return items
 
@@ -160,13 +164,12 @@ class LaunchXMLTransformer(Transformer):
         value = items[1][1:-1]
         return (key, value)
 
-
     def _build_node(self, attrs, remaps, params):
         return Node(
             name=attrs.get("name"),
             package=attrs.get("pkg"),
             exec=attrs.get("exec"),
             namespace=attrs.get("namespace"),
-            remappings=remaps,
+            remappings=remaps,   # agora lista de Remapping
             params=params
         )

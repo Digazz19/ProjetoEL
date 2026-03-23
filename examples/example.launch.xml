@@ -1,37 +1,59 @@
 <launch>
 
+  <!-- Argumentos e variáveis globais -->
   <arg name="use_sim" default="false"/>
-
   <let name="robot_name" value="kobuki"/>
-
   <set_env name="RMW_IMPLEMENTATION" value="rmw_fastrtps_cpp"/>
 
+  <!-- Node SEM namespace: nome e remaps ficam em '/' -->
+  <node pkg="nav2" exec="controller_server" name="controller"/>
+
+  <!-- Nodes COM namespace: testa resolução de nomes relativos -->
   <group scoped="true">
 
-      <node pkg="demo_nodes_cpp"
-            exec="talker"
-            name="talker_node">
+    <!-- talker: remap relativo + remap absoluto -->
+    <!-- /chatter_global é absoluto -> nao deve ser prefixado com o namespace -->
+    <node pkg="demo_nodes_cpp"
+          exec="talker"
+          name="talker_node"
+          namespace="robot1">
 
-          <param name="rate" value="10"/>
+      <param name="rate" value="10"/>
+      <remap from="chatter" to="robot_chat"/>
+      <remap from="/chatter_global" to="/global/chat"/>
 
-          <remap from="/chatter" to="/robot/chatter"/>
+    </node>
 
-          <env name="DEBUG" value="true"/>
+    <!-- listener: mesmo namespace, remap para o mesmo topico que o talker -->
+    <!-- serve para verificar que ambos ficam ligados ao mesmo Topic no grafo -->
+    <node pkg="demo_nodes_cpp"
+          exec="listener"
+          name="listener_node"
+          namespace="robot1">
 
-      </node>
+      <remap from="chatter" to="robot_chat"/>
 
-      <node pkg="demo_nodes_cpp"
-            exec="listener"
-            name="listener_node"/>
+    </node>
+
+    <!-- Node com namespace diferente dentro do mesmo grupo -->
+    <node pkg="sensor_pkg"
+          exec="lidar_driver"
+          name="lidar"
+          namespace="sensors">
+
+      <remap from="scan" to="base_scan"/>
+
+    </node>
 
   </group>
 
+  <!-- Include com arg passado -->
   <include file="sensors.launch.xml">
-      <arg name="sensor_rate" value="50"/>
+    <arg name="sensor_rate" value="50"/>
   </include>
 
+  <!-- Executable e unset_env para garantir que continuam a ser extraidos -->
   <executable cmd="ls -las" cwd="/home"/>
-
   <unset_env name="OLD_ENV"/>
 
 </launch>
