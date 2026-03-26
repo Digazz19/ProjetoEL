@@ -1,5 +1,5 @@
 from lark import Transformer
-from models.architectureROS import ArchitectureROS, Node, Param
+from models.architectureROS import ArchitectureROS, Node, Param, Remapping
 
 
 class LaunchPythonTransformer(Transformer):
@@ -12,6 +12,7 @@ class LaunchPythonTransformer(Transformer):
     def start(self, items):
         for item in items:
             self._process_top_level(item)
+        self.arch.resolve()
         return self.arch
 
     def stmt(self, items):
@@ -131,7 +132,7 @@ class LaunchPythonTransformer(Transformer):
                 package=kwargs.get("package", kwargs.get("pkg")),
                 exec=kwargs.get("executable", kwargs.get("exec")),
                 namespace=kwargs.get("namespace"),
-                remappings=kwargs.get("remappings", []),
+                remappings=self._convert_remaps(kwargs.get("remappings", [])),
                 params=kwargs.get("parameters", kwargs.get("params", [])),
                 args=kwargs.get("arguments", kwargs.get("ros_arguments"))
             )
@@ -281,10 +282,12 @@ class LaunchPythonTransformer(Transformer):
         result = []
         for item in remaps:
             item = self._resolve(item)
-            if isinstance(item, tuple) and len(item) == 2:
-                result.append((item[0], item[1]))
+            if isinstance(item, Remapping):
+                result.append(item)
+            elif isinstance(item, tuple) and len(item) == 2:
+                result.append(Remapping(src=item[0], dst=item[1]))
             elif isinstance(item, list) and len(item) == 2:
-                result.append((item[0], item[1]))
+                result.append(Remapping(src=item[0], dst=item[1]))
         return result
 
     def _convert_params(self, params_raw):
