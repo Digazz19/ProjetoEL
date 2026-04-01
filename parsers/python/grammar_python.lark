@@ -1,0 +1,106 @@
+start: stmt*
+
+stmt: import_stmt
+    | funcdef
+    | extra_funcdef
+    | class_def
+    | top_assign
+    | _NEWLINE
+
+top_assign: NAME "=" expr _NEWLINE
+          | NAME ":" expr "=" expr _NEWLINE
+
+class_def: "class" NAME /[^:(]+/ ":" class_suite
+         | "class" NAME "(" /[^)]+/ ")" ":" class_suite
+         | "class" NAME "(" ")" ":" class_suite
+         | "class" NAME ":" class_suite
+class_suite: _NEWLINE _INDENT class_line+ _DEDENT
+class_line: /[^\n]+/ _NEWLINE
+           | _NEWLINE
+
+import_stmt: "from" dotted_name "import" import_list _NEWLINE
+           | "from" dotted_name "import" "(" import_list [","] ")" _NEWLINE
+           | "import" import_list _NEWLINE
+
+import_list: import_item ("," import_item)*
+import_item: dotted_name ["as" NAME]
+dotted_name: NAME ("." NAME)*
+
+funcdef: "def" "generate_launch_description" "(" ")" [ARROW] ":" suite
+
+extra_funcdef: "def" NAME "(" [extra_args] ")" [ARROW] ":" extra_suite
+extra_args: /[^)]+/
+extra_suite: _NEWLINE _INDENT extra_line+ _DEDENT
+extra_line: /[^\n]+/ _NEWLINE
+          | _NEWLINE
+
+suite: _NEWLINE _INDENT func_stmt+ _DEDENT
+
+func_stmt: assign_stmt
+         | with_stmt
+         | expr_stmt
+         | return_stmt
+         | _NEWLINE
+
+assign_stmt: NAME "=" expr _NEWLINE
+           | NAME ":" expr "=" expr _NEWLINE
+with_stmt: "with" expr "as" NAME ":" with_suite
+with_suite: _NEWLINE _INDENT with_line+ _DEDENT
+with_line: /[^\n]+/ _NEWLINE
+          | _NEWLINE
+expr_stmt: method_call _NEWLINE
+return_stmt: "return" expr _NEWLINE
+method_call: NAME "." "add_action" "(" expr ")"
+
+?expr: launch_description
+     | call
+     | dict_call
+     | list_add
+     | list
+     | tuple
+     | dict
+     | atom
+
+list_add: (call | atom | list) "+" (call | atom | list) ("+" (call | atom | list))*
+
+dict_call: dict "." NAME "(" ")"
+         | dict "." NAME "(" arguments ")" 
+
+launch_description: "LaunchDescription" "(" [expr] ")"
+
+call: qualified_name "(" [arguments] ")" ("." NAME "(" [arguments] ")")*
+
+qualified_name: NAME ("." NAME)*
+arguments: argument ("," argument)* [","]
+?argument: NAME "=" expr   -> kw_argument
+         | expr             -> pos_argument
+
+list : "[" [expr ("," expr)* [","]] "]"
+tuple: "(" [expr ("," expr)* [","]] ")"
+dict : "{" [dict_item ("," dict_item)* [","]] "}"
+dict_item: expr ":" expr
+
+?atom: LONG_STRING      -> string
+     | STRING STRING+   -> concat_string
+     | STRING           -> string
+     | SIGNED_NUMBER    -> number
+     | "True"           -> true
+     | "False"          -> false
+     | "None"           -> none
+     | NAME             -> var
+
+ARROW.2: /[ \t]*->[ \t]*[^\n:]+/
+LONG_STRING.1: /"""[\s\S]*?"""/
+             | /'''[\s\S]*?'''/
+STRING: /\"[^\"\\]*(?:\\.[^\"\\]*)*\"/
+      | /\'[^\'\\]*(?:\\.[^\'\\]*)*\'/
+
+%import common.CNAME -> NAME
+%import common.SIGNED_NUMBER
+%import common.WS_INLINE
+_NEWLINE: /(\r?\n[\t ]*)+/
+%declare _INDENT _DEDENT
+
+%ignore WS_INLINE
+%ignore /#[^\n]*/
+%ignore LONG_STRING
