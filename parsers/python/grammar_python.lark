@@ -28,38 +28,60 @@ dotted_name: NAME ("." NAME)*
 
 funcdef: "def" "generate_launch_description" "(" ")" [ARROW] ":" suite
 
-extra_funcdef: "def" NAME "(" [extra_args] ")" [ARROW] ":" extra_suite
+extra_funcdef: "def" NAME "(" [extra_args] ")" [ARROW] ":" _NEWLINE _INDENT extra_item+ _DEDENT
 extra_args: /[^)]+/
-extra_suite: _NEWLINE _INDENT extra_line+ _DEDENT
-extra_line: /[^\n]+/ _NEWLINE
+extra_item: _INDENT extra_item+ _DEDENT
+          | /[^\n]+/ _NEWLINE
           | _NEWLINE
 
 suite: _NEWLINE _INDENT func_stmt+ _DEDENT
 
 func_stmt: assign_stmt
+         | if_stmt
          | with_stmt
          | expr_stmt
          | return_stmt
+         | ignored_stmt
+         | closing_paren
          | _NEWLINE
+
+closing_paren: ")" _NEWLINE
+             | ")" ")" _NEWLINE
+
+if_stmt: IF_HDR suite elif_clause* else_clause?
+elif_clause: ELIF_HDR suite
+else_clause: "else" ":" suite
+
+IF_HDR.3: /if[^\n:]+:/
+ELIF_HDR.3: /elif[^\n:]+:/
+
+ignored_stmt: AUGMENTED_LINE _NEWLINE
+
+AUGMENTED_LINE.2: /[^\n]*(?:\+=|-=|\*=|\/=)[^\n]*/
 
 assign_stmt: NAME "=" expr _NEWLINE
            | NAME ":" expr "=" expr _NEWLINE
-with_stmt: "with" expr "as" NAME ":" with_suite
-with_suite: _NEWLINE _INDENT with_line+ _DEDENT
-with_line: /[^\n]+/ _NEWLINE
-          | _NEWLINE
+           | NAME ("," NAME)+ "=" expr _NEWLINE
+with_stmt: "with" expr "as" NAME ":" _NEWLINE _INDENT extra_item+ _DEDENT
 expr_stmt: method_call _NEWLINE
+         | call _NEWLINE
 return_stmt: "return" expr _NEWLINE
 method_call: NAME "." "add_action" "(" expr ")"
 
 ?expr: launch_description
      | call
      | dict_call
+     | string_call
+     | subscript
      | list_add
      | list
      | tuple
      | dict
      | atom
+
+string_call: STRING "." NAME "(" [arguments] ")" 
+
+subscript: (call | NAME) ("." NAME)* "[" expr "]" ("[" expr "]")*
 
 list_add: (call | atom | list) "+" (call | atom | list) ("+" (call | atom | list))*
 
@@ -80,19 +102,23 @@ tuple: "(" [expr ("," expr)* [","]] ")"
 dict : "{" [dict_item ("," dict_item)* [","]] "}"
 dict_item: expr ":" expr
 
-?atom: LONG_STRING      -> string
-     | STRING STRING+   -> concat_string
-     | STRING           -> string
-     | SIGNED_NUMBER    -> number
-     | "True"           -> true
-     | "False"          -> false
-     | "None"           -> none
-     | NAME             -> var
+?atom: LONG_STRING         -> string
+     | STRING STRING+      -> concat_string
+     | STRING               -> string
+     | SIGNED_NUMBER        -> number
+     | "True"               -> true
+     | "False"              -> false
+     | "None"               -> none
+     | NAME ("." NAME)+     -> qualified_var
+     | NAME                 -> var
 
 ARROW.2: /[ \t]*->[ \t]*[^\n:]+/
+AUGASSIGN: /\+=|-=|\*=|\/=/
 LONG_STRING.1: /"""[\s\S]*?"""/
              | /'''[\s\S]*?'''/
-STRING: /\"[^\"\\]*(?:\\.[^\"\\]*)*\"/
+STRING: /f\"[^\"]*\"/
+      | /f\'[^\']*\'/
+      | /\"[^\"\\]*(?:\\.[^\"\\]*)*\"/
       | /\'[^\'\\]*(?:\\.[^\'\\]*)*\'/
 
 %import common.CNAME -> NAME

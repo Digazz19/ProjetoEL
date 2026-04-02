@@ -33,18 +33,6 @@ class LaunchPythonTransformer(Transformer):
     def funcdef(self, items):
         return {"type": "function", "body": items[-1]}
 
-    def extra_funcdef(self, items):
-        return None
-
-    def top_assign(self, items):
-        return None
-
-    def class_def(self, items):
-        return None
-
-    def with_stmt(self, items):
-        return None
-
     def suite(self, items):
         return [item for item in items if item is not None]
 
@@ -66,6 +54,7 @@ class LaunchPythonTransformer(Transformer):
     def launch_description(self, items):
         if not items:
             return {"type": "launch_description", "actions": []}
+
         source = self._resolve(items[0])
         actions = []
         if isinstance(source, list):
@@ -79,25 +68,6 @@ class LaunchPythonTransformer(Transformer):
 
     def call(self, items):
         return self._build_call(items)
-
-    def dict_call(self, items):
-        return f"{items[0]}.{items[1]}()"
-
-    def list_add(self, items):
-        result = []
-        for item in items:
-            if isinstance(item, list):
-                result.extend(item)
-        return result
-
-    def concat_string(self, items):
-        parts = []
-        for item in items:
-            s = str(item)
-            if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
-                s = s[1:-1]
-            parts.append(s)
-        return ''.join(parts)
 
     def arguments(self, items):
         return items
@@ -121,15 +91,97 @@ class LaunchPythonTransformer(Transformer):
                 result[item[0]] = item[1]
         return result
 
+    def dict_call(self, items):
+        # dict.method() — ignoramos o resultado, devolvemos string simbólica
+        return f"{items[0]}.{items[1]}()"
+
+    def list_add(self, items):
+        # list + list — concatenar as listas se possível
+        result = []
+        for item in items:
+            if isinstance(item, list):
+                result.extend(item)
+        return result
+
+    def concat_string(self, items):
+        # string concatenação implícita: 'a' 'b' -> 'ab'
+        parts = []
+        for item in items:
+            s = str(item)
+            if (s.startswith('"') and s.endswith('"')) or                (s.startswith("'") and s.endswith("'")):
+                s = s[1:-1]
+            parts.append(s)
+        return ''.join(parts)
+
+    def top_assign(self, items):
+        return None
+
+    def class_def(self, items):
+        return None
+
+    def extra_funcdef(self, items):
+        return None
+
+    def with_stmt(self, items):
+        return None
+
+    def if_stmt(self, items):
+        # items[0] = IF_HDR token (ex: "if ROS_DISTRO == 'humble':")
+        # items[1] = suite do ramo if (lista de stmts)
+        # items[2..] = elif_clause* e else_clause (opcionais)
+        results = []
+        hdr = str(items[0])
+        # Extrair a condição do token (remover "if " do início e ":" do fim)
+        condition = hdr[3:].rstrip(':').strip()
+
+        # Processar o suite do ramo if
+        suite = items[1] if len(items) > 1 else []
+        for item in (suite if isinstance(suite, list) else [suite]):
+            if item is not None:
+                results.append(("if", condition, item))
+
+        # Processar elif e else
+        for clause in items[2:]:
+            if isinstance(clause, list):
+                results.extend(clause)
+
+        return ("if_block", results)
+
+    def elif_clause(self, items):
+        hdr = str(items[0])
+        condition = hdr[5:].rstrip(':').strip()  # remover "elif "
+        suite = items[1] if len(items) > 1 else []
+        results = []
+        for item in (suite if isinstance(suite, list) else [suite]):
+            if item is not None:
+                results.append(("if", condition, item))
+        return results
+
+    def else_clause(self, items):
+        suite = items[0] if items else []
+        results = []
+        for item in (suite if isinstance(suite, list) else [suite]):
+            if item is not None:
+                results.append(("else", None, item))
+        return results
+
+    def string_call(self, items):
+        # 'string'.method(args) — ignorado semanticamente
+        return None
+
+    def subscript(self, items):
+        # NAME[expr] — devolver string simbólica
+        return f"{items[0]}[...]"
+
+    def ignored_stmt(self, items):
+        return None
+
     def dict_item(self, items):
         return (items[0], items[1])
 
     def string(self, items):
         value = str(items[0])
-        if (value.startswith('"') and value.endswith('"')) or \
-           (value.startswith("'") and value.endswith("'")):
-            return value[1:-1]
-        return value
+        return value[1:-1]
 
     def number(self, items):
         text = str(items[0])
@@ -149,12 +201,18 @@ class LaunchPythonTransformer(Transformer):
     def var(self, items):
         return {"type": "var", "name": str(items[0])}
 
+    def qualified_var(self, items):
+        # sys.argv, os.path, etc. — devolver como string simbólica
+        return ".".join(str(i) for i in items)
+
     def _build_call(self, items):
         qname = items[0]
         args = []
         kwargs = {}
-        if len(items) > 1:
+        if len(items) > 1 and items[1] is not None:
             for item in items[1]:
+                if item is None:
+                    continue
                 if isinstance(item, tuple) and len(item) == 2 and isinstance(item[0], str):
                     kwargs[item[0]] = item[1]
                 else:
@@ -173,20 +231,25 @@ class LaunchPythonTransformer(Transformer):
                 params=kwargs.get("parameters", kwargs.get("params", [])),
                 args=kwargs.get("arguments", kwargs.get("ros_arguments"))
             )
+
         if short == "DeclareLaunchArgument":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
             default = kwargs.get("default_value", kwargs.get("default"))
             return {"type": "arg", "name": name, "default": self._resolve(default)}
+        
         if short == "IncludeLaunchDescription":
             source_value = args[0] if args else kwargs.get("launch_description_source")
             return {"type": "include", "file": source_value, "args": []}
+
         if short == "SetEnvironmentVariable":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
             value = self._resolve(args[1]) if len(args) > 1 else self._resolve(kwargs.get("value"))
             return {"type": "set_env", "name": name, "value": value}
+
         if short == "UnsetEnvironmentVariable":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
             return {"type": "unset_env", "name": name}
+
         if short == "ExecuteProcess":
             return {
                 "type": "executable",
@@ -194,13 +257,20 @@ class LaunchPythonTransformer(Transformer):
                 "cwd": self._resolve(kwargs.get("cwd")),
                 "env": self._convert_env(kwargs.get("additional_env", kwargs.get("env")))
             }
-        if short in {"LaunchConfiguration", "TextSubstitution", "EnvironmentVariable",
-                     "FindPackageShare", "ThisLaunchFileDir"}:
+
+        if short in {"LaunchConfiguration", "TextSubstitution", "EnvironmentVariable", "FindPackageShare", "ThisLaunchFileDir"}:
             return self._symbolic(qname, args, kwargs)
-        if short in {"PythonLaunchDescriptionSource", "XMLLaunchDescriptionSource",
-                     "YAMLLaunchDescriptionSource"}:
+
+        if short in {"PythonLaunchDescriptionSource", "XMLLaunchDescriptionSource", "YAMLLaunchDescriptionSource"}:
             path_value = args[0] if args else kwargs.get("location")
-            return {"type": "launch_source", "source_type": short, "path": path_value}
+            return {
+                "type": "launch_source",
+                "source_type": short,
+                "path": path_value
+            }
+
+        if short == "PathJoinSubstitution":
+            return self._symbolic(qname, args, kwargs)
         return self._symbolic(qname, args, kwargs)
 
     def _symbolic(self, qname, args, kwargs):
@@ -229,11 +299,17 @@ class LaunchPythonTransformer(Transformer):
             )
         if isinstance(value, dict):
             if value.get("type") == "launch_description":
-                return {"type": "launch_description",
-                        "actions": [self._resolve(a) for a in value.get("actions", [])]}
-            if value.get("type") in {"arg", "include", "set_env", "unset_env",
-                                     "executable", "add_action", "launch_source"}:
+                return {
+                    "type": "launch_description",
+                    "actions": [self._resolve(a) for a in value.get("actions", [])]
+                }
+
+            if value.get("type") in {
+                "arg", "include", "set_env", "unset_env",
+                "executable", "add_action", "launch_source"
+            }:
                 return {k: self._resolve(v) for k, v in value.items()}
+
             return {self._resolve(k): self._resolve(v) for k, v in value.items()}
         return value
 
@@ -253,12 +329,42 @@ class LaunchPythonTransformer(Transformer):
                     self.launch_descriptions[name] = resolved["actions"]
                 else:
                     self.variables[name] = resolved
+            elif kind == "if_block":
+                _, branches = stmt
+                for branch_kind, condition, item in branches:
+                    self._process_if_item(item, condition)
             elif kind == "return":
                 self._consume_return(stmt[1])
             elif isinstance(stmt, dict) and stmt.get("type") == "add_action":
                 target = stmt["target"]
                 action = self._resolve(stmt["action"])
                 self.launch_descriptions.setdefault(target, []).append(action)
+
+    def _process_if_item(self, item, condition):
+        if item is None:
+            return
+        kind = item[0] if isinstance(item, tuple) else None
+        if kind == "assign":
+            _, name, value = item
+            resolved = self._resolve(value)
+            if isinstance(resolved, Node):
+                resolved.condition = condition
+                self.arch.add_node(resolved)
+            elif isinstance(resolved, dict) and resolved.get("type") == "launch_description":
+                for action in resolved.get("actions", []):
+                    if isinstance(action, Node):
+                        action.condition = condition
+                        self.arch.add_node(action)
+            else:
+                self.variables[name] = resolved
+        elif kind == "return":
+            self._consume_return(item[1])
+        elif kind == "if_block":
+            _, branches = item
+            for branch_kind, nested_cond, nested_item in branches:
+                combined = f"({condition}) and ({nested_cond})" if nested_cond else condition
+                self._process_if_item(nested_item, combined)
+
 
     def _consume_return(self, value):
         resolved = self._resolve(value)
@@ -281,8 +387,10 @@ class LaunchPythonTransformer(Transformer):
                     self.arch.args[action["name"]] = action.get("default")
                 elif kind == "include":
                     file_value = self._resolve(action.get("file"))
+
                     if isinstance(file_value, dict) and file_value.get("type") == "launch_source":
                         file_value = file_value.get("path")
+                    
                     self.arch.includes.append(file_value)
                 elif kind == "set_env":
                     self.arch.env[action["name"]] = action.get("value")
@@ -292,10 +400,7 @@ class LaunchPythonTransformer(Transformer):
                     self.arch.executables.append(action)
 
     def _is_action(self, value):
-        return isinstance(value, Node) or (
-            isinstance(value, dict) and
-            value.get("type") in {"arg", "include", "set_env", "unset_env", "executable"}
-        )
+        return isinstance(value, Node) or (isinstance(value, dict) and value.get("type") in {"arg", "include", "set_env", "unset_env", "executable"})
 
     def _convert_remaps(self, remaps):
         result = []

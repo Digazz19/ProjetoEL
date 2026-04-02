@@ -17,6 +17,10 @@ class PythonLaunchParser:
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
 
+        # Normalizar line endings (CRLF -> LF) para evitar problemas com
+        # ficheiros criados no Windows
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+
         if not text.endswith("\n"):
             text += "\n"
 

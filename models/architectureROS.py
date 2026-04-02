@@ -61,6 +61,7 @@ class Node:
         self.remappings = remappings or []   # lista de Remapping
         self.params = params or []
         self.args = args
+        self.condition = None           # condição do if que envolve o node (se aplicável)
 
         # Preenchido por ArchitectureROS.resolve()
         self.resolved_name = None       # nome completo: /namespace/name
@@ -106,13 +107,14 @@ class Node:
         ]
 
     def __repr__(self):
+        cond_str = f"\n  condition={self.condition}," if self.condition else ""
         return (
             f"\nNode(\n"
             f"  name={self.name},\n"
             f"  resolved_name={self.resolved_name},\n"
             f"  pkg={self.package},\n"
             f"  exec={self.exec},\n"
-            f"  namespace={self.namespace},\n"
+            f"  namespace={self.namespace},{cond_str}\n"
             f"  remaps={self.remappings},\n"
             f"  resolved_remaps={self.resolved_remappings},\n"
             f"  params={self.params},\n"
@@ -182,6 +184,8 @@ class ArchitectureROS:
             for i, node in enumerate(self.nodes, 1):
                 print(f"[NODE {i}] {node.resolved_name or node.name}")
                 print(f"  pkg={node.package}, exec={node.exec}")
+                if node.condition:
+                    print(f"  condition={node.condition}")
                 if node.remappings:
                     print(f"  remaps:")
                     for r in node.resolved_remappings:
