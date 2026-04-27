@@ -317,8 +317,8 @@ Todas as limitações estão documentadas e validadas honestamente — o output 
 ## 👤 Autores
 
 **Diogo Abreu** — [@Digazz19](https://github.com/Digazz19)
-**Miguel Gramoso** — [@Digazz19](https://github.com/gramosomi)
-**Mariana** — [@Digazz19](https://github.com/wendy077)
+**Miguel Gramoso** — [@gramosomi](https://github.com/gramosomi)
+**Mariana** — [@wendy077](https://github.com/wendy077)
 
 ---
 
