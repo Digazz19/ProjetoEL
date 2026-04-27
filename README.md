@@ -46,10 +46,6 @@ ProjetoEL/
 │   └── real-python/                    # 12 launch files ROS2 reais
 │
 ├── output/                              # JSONs Layer 2 gerados
-│
-└── plugin/
-    ├── setup.py
-    └── haros_plugin_ros2_extractor/    # Plugin HAROS
 ```
 
 ---
