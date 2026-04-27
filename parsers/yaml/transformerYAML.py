@@ -6,6 +6,7 @@ Produz um LaunchDescription Layer 2 conforme a especificação HAROS.
 """
 
 from lark import Transformer
+import re as _re
 
 from models.layer2 import (
     LaunchDescription,
@@ -15,6 +16,7 @@ from models.layer2 import (
     ActionIDGenerator,
     DeclareArgumentAction,
     SetParameterAction,
+    PushNamespaceAction,
     NodeAction,
     IncludeAction,
     GroupAction,
@@ -22,7 +24,43 @@ from models.layer2 import (
     ActionType,
 )
 
+def _parse_launch_condition_to_ir(condition_str: str):
+    s = str(condition_str).strip()
 
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1].strip()
+
+    parts = _re.split(r"\s+or\s+", s)
+    if len(parts) > 1:
+        result = _parse_launch_condition_to_ir(parts[0])
+        for p in parts[1:]:
+            result = ["or", result, _parse_launch_condition_to_ir(p)]
+        return result
+
+    parts = _re.split(r"\s+and\s+", s)
+    if len(parts) > 1:
+        result = _parse_launch_condition_to_ir(parts[0])
+        for p in parts[1:]:
+            result = ["and", result, _parse_launch_condition_to_ir(p)]
+        return result
+
+    m = _re.match(r"^not\s+(.+)$", s)
+    if m:
+        return ["not", _parse_launch_condition_to_ir(m.group(1))]
+
+    m = _re.match(r"^\$\(var\s+([A-Za-z_][A-Za-z0-9_]*)\)$", s)
+    if m:
+        return ["eq", ["launch_arg_get", m.group(1)], "true"]
+
+    m = _re.match(r"^\$\(arg\s+([A-Za-z_][A-Za-z0-9_]*)\)$", s)
+    if m:
+        return ["eq", ["launch_arg_get", m.group(1)], "true"]
+
+    m = _re.match(r"^\$\(env\s+([A-Za-z_][A-Za-z0-9_]*)\)$", s)
+    if m:
+        return ["truthy", ["env_get", m.group(1)]]
+
+    return ["truthy", ["var_get", s]]
 class LaunchYAMLTransformer(Transformer):
 
     def __init__(self, file_path: str = "unknown.launch.yaml"):
@@ -119,6 +157,20 @@ class LaunchYAMLTransformer(Transformer):
                 provenance=self._provenance(),
             ))
 
+        elif t == "set_parameter":
+            name = item.get("name", "")
+            value = item.get("value")
+
+            action = SetParameterAction(
+                id=self._id_gen.generate(f"set_param_{name}"),
+                action_type=ActionType.SET_PARAMETER,
+                name=str(name) if name else "",
+                value=self._sub(value),
+                target_scope=item.get("target_scope", "local"),
+                provenance=self._provenance(),
+            )
+            ld.add_action(action)
+
         elif t == "set_env":
             ld.add_action(SetParameterAction(
                 id=self._id_gen.generate(f"set_env_{item.get('name','')}"),
@@ -144,6 +196,17 @@ class LaunchYAMLTransformer(Transformer):
                 conditions=conditions or [],
                 provenance=self._provenance(),
             ))
+
+        elif t == "push_namespace":
+            ns = item.get("namespace")
+            action = PushNamespaceAction(
+                id=self._id_gen.generate(f"push_ns_{ns}"),
+                action_type=ActionType.PUSH_NAMESPACE,
+                namespace=self._sub(ns) if ns else None,
+                conditions=conditions or [],
+                provenance=self._provenance(),
+            )
+            ld.add_action(action)
 
         elif t == "group":
             group_id = self._id_gen.generate("group")
@@ -194,11 +257,13 @@ class LaunchYAMLTransformer(Transformer):
                 ))
 
         cond_list = list(conditions or [])
-        if item.get("if"):
-            cond_list.append(["eq", ["launch_arg_get", item["if"]], "true"])
-        if item.get("unless"):
-            cond_list.append(["not", ["eq", ["launch_arg_get", item["unless"]], "true"]])
 
+        if item.get("if"):
+            cond_list.append(_parse_launch_condition_to_ir(item["if"]))
+
+        if item.get("unless"):
+            cond_list.append(["not", _parse_launch_condition_to_ir(item["unless"])])
+            
         return NodeAction(
             id=self._id_gen.generate(f"Node(pkg={pkg},exec={exe},name={name})"),
             action_type=ActionType.NODE,
@@ -270,6 +335,22 @@ class LaunchYAMLTransformer(Transformer):
                 attrs[item[0]] = item[1]
         return {"type": "include", "file": attrs.get("file"), "args": args}
 
+    def push_ros_namespace(self, items):
+        attrs = dict([i for i in items if isinstance(i, tuple)])
+        return {
+            "type": "push_namespace",
+            "namespace": attrs.get("namespace"),
+        }
+    
+    def set_parameter(self, items):
+        attrs = dict([i for i in items if isinstance(i, tuple)])
+        return {
+            "type": "set_parameter",
+            "name": attrs.get("name"),
+            "value": attrs.get("value"),
+            "target_scope": attrs.get("target_scope", "local"),
+        }
+    
     def group(self, items):
         children = [i for i in items if isinstance(i, (dict, list))]
         return {"type": "group", "children": children}

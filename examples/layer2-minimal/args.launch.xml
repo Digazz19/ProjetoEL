@@ -1,0 +1,4 @@
+<launch>
+  <arg name="use_sim_time" default="false"/>
+  <node pkg="demo_nodes_cpp" exec="talker" name="talker_node"/>
+</launch>

@@ -1,0 +1,12 @@
+<launch>
+
+ <arg name="a" default="true"/>
+ <arg name="b" default="true"/>
+
+ <node
+   pkg="demo_nodes_cpp"
+   exec="talker"
+   if="$(var a) and $(var b)"
+ />
+
+</launch>

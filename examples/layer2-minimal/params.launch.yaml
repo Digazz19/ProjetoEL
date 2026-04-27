@@ -1,0 +1,10 @@
+launch:
+  - node:
+      pkg: demo_nodes_cpp
+      exec: talker
+      name: talker_node
+      param:
+        - name: use_sim_time
+          value: "false"
+        - name: frame_id
+          value: base_link

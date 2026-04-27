@@ -1,0 +1,6 @@
+<launch>
+  <group>
+    <push-ros-namespace namespace="robot1"/>
+    <node pkg="demo_nodes_cpp" exec="talker" name="talker_node"/>
+  </group>
+</launch>

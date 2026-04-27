@@ -13,6 +13,8 @@ element: "-" node
        | "-" executable
        | "-" set_env
        | "-" unset_env
+       | "-" push_ros_namespace
+       | "-" set_parameter
 
 node: "node" ":" _NL _INDENT node_content* _DEDENT
 node_content: attribute | remap | param | env
@@ -21,6 +23,10 @@ include: "include" ":" _NL _INDENT include_content* _DEDENT
 include_content: attribute | args
 
 group: "group" ":" _NL _INDENT element* _DEDENT
+
+push_ros_namespace: "push_ros_namespace" ":" _NL _INDENT attribute* _DEDENT
+
+set_parameter: "set_parameter" ":" _NL _INDENT attribute* _DEDENT
 
 arg: "arg" ":" _NL _INDENT attribute* _DEDENT
 let: "let" ":" _NL _INDENT attribute* _DEDENT

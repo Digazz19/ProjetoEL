@@ -11,6 +11,8 @@ element: node
        | executable
        | set_env
        | unset_env
+       | push_ros_namespace
+       | set_parameter
 
 node: empty_node
     | full_node
@@ -27,6 +29,10 @@ include: "<include" attribute+ ">" arg* "</include>"
        | "<include" attribute+ "/>"
 
 group: "<group" attribute* ">" element* "</group>"
+
+push_ros_namespace: "<push-ros-namespace" attribute+ "/>"
+
+set_parameter: "<set_parameter" attribute+ "/>"
 
 arg: "<arg" attribute+ "/>"
 

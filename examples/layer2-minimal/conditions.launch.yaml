@@ -1,0 +1,10 @@
+launch:
+  - arg:
+      name: use_talker
+      default: "true"
+
+  - node:
+      pkg: demo_nodes_cpp
+      exec: talker
+      name: talker_node
+      if: "$(var use_talker)"

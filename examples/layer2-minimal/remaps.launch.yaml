@@ -1,0 +1,8 @@
+launch:
+  - node:
+      pkg: demo_nodes_cpp
+      exec: talker
+      name: talker_node
+      remap:
+        - from: /chatter
+          to: /robot/chatter

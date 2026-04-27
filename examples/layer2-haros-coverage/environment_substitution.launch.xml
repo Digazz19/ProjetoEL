@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="demo_nodes_cpp" exec="talker" name="$(env ROBOT_NAME robot1)"/>
+</launch>

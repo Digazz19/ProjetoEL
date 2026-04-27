@@ -81,7 +81,7 @@ def process_file(parser, file_path, show_tree=False, as_json=False, json_file=Fa
         # Sempre guardar o JSON em output/
         output_dir = "output"
         os.makedirs(output_dir, exist_ok=True)
-        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        base_name = os.path.basename(file_path)
         json_path = os.path.join(output_dir, f"{base_name}.layer2.json")
         with open(json_path, "w", encoding="utf-8") as f:
             f.write(ld.to_json(indent=2))

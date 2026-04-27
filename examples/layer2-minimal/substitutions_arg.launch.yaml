@@ -1,0 +1,13 @@
+launch:
+  - arg:
+      name: robot_name
+      default: robot1
+
+  - group:
+      - push_ros_namespace:
+          namespace: "$(var robot_name)"
+
+      - node:
+          pkg: demo_nodes_cpp
+          exec: talker
+          name: talker_node

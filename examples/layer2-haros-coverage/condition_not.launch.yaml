@@ -1,0 +1,9 @@
+launch:
+  - arg:
+      name: a
+      default: "false"
+
+  - node:
+      pkg: demo_nodes_cpp
+      exec: talker
+      if: "not $(var a)"

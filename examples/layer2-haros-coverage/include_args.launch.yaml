@@ -1,0 +1,6 @@
+launch:
+  - include:
+      file: child.launch.yaml
+      arg:
+        - name: robot_name
+          value: robot1

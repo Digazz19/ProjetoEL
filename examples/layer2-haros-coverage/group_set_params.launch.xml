@@ -1,0 +1,6 @@
+<launch>
+  <group>
+    <set_parameter name="use_sim_time" value="true"/>
+    <node pkg="demo_nodes_cpp" exec="talker"/>
+  </group>
+</launch>

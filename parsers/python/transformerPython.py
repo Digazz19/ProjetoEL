@@ -92,6 +92,24 @@ class LaunchPythonTransformer(Transformer):
             confidence=confidence,
         )
 
+    def _condition_expr_to_ir(self, expr):
+        expr = self._resolve(expr)
+
+        if isinstance(expr, dict):
+            if expr.get("type") == "launch_config":
+                return ["eq", ["launch_arg_get", expr.get("name", "")], "true"]
+
+            if expr.get("type") == "env_var":
+                return ["truthy", ["env_get", expr.get("name", "")]]
+
+            if expr.get("type") == "var":
+                return ["truthy", ["var_get", expr.get("name", "")]]
+
+        if isinstance(expr, bool):
+            return ["literal", expr]
+
+        return _parse_condition_to_ir(str(expr))
+
     def _sub(self, value) -> LaunchSubstitution:
         """Converte um valor raw para LaunchSubstitution."""
         if isinstance(value, LaunchSubstitution):
@@ -118,6 +136,17 @@ class LaunchPythonTransformer(Transformer):
                 return LaunchSubstitution.environment_variable(
                     value.get("name", ""), value.get("default")
                 )
+            if t == "file_path":
+                return LaunchSubstitution.file_path(
+                    value.get("package", ""),
+                    value.get("relative_path", "")
+                )
+
+            if t == "path_join":
+                return LaunchSubstitution.expression([
+                    "path_join",
+                    *value.get("parts", [])
+                ])
         return LaunchSubstitution.literal(str(value)) if value is not None else LaunchSubstitution.literal(None)
 
     def _make_node_action(self, node_data: dict, condition: str = None) -> NodeAction:
@@ -154,11 +183,21 @@ class LaunchPythonTransformer(Transformer):
 
         # Condições
         cond_list = []
-        if condition:
-            try:
-                cond_list = [_parse_condition_to_ir(condition)]
-            except Exception:
-                cond_list = [["symbolic", condition]]
+
+        raw_condition = condition or node_data.get("condition")
+
+        if raw_condition:
+            resolved_condition = self._resolve(raw_condition)
+
+            if isinstance(resolved_condition, dict) and resolved_condition.get("type") == "if_condition":
+                cond_list = [resolved_condition.get("condition")]
+            elif isinstance(resolved_condition, dict) and resolved_condition.get("type") == "unless_condition":
+                cond_list = [["not", resolved_condition.get("condition")]]
+            else:
+                try:
+                    cond_list = [_parse_condition_to_ir(str(resolved_condition))]
+                except Exception:
+                    cond_list = [["symbolic", str(resolved_condition)]]
 
         # ros_arguments — converter para LaunchSubstitution e serializar
         ros_args = []
@@ -371,6 +410,48 @@ class LaunchPythonTransformer(Transformer):
                     args.append(item)
         return self._specialize_call(qname, args, kwargs)
 
+    def _extract_launch_arguments(self, raw):
+        raw = self._resolve(raw)
+
+        if raw is None:
+            return []
+
+        # Caso: {'robot_name': 'robot1'}
+        if isinstance(raw, dict):
+            return [
+                {
+                    "name": str(k),
+                    "value": self._resolve(v),
+                }
+                for k, v in raw.items()
+                if k != "type"
+            ]
+
+        # Caso: [('robot_name', 'robot1')]
+        if isinstance(raw, list):
+            result = []
+            for item in raw:
+                item = self._resolve(item)
+
+                if isinstance(item, tuple) and len(item) == 2:
+                    result.append({
+                        "name": str(item[0]),
+                        "value": self._resolve(item[1]),
+                    })
+
+                elif isinstance(item, dict) and item.get("name"):
+                    result.append({
+                        "name": str(item.get("name")),
+                        "value": self._resolve(item.get("value") or item.get("default")),
+                    })
+
+            return result
+
+        # Caso frequente: {'robot_name': 'robot1'}.items()
+        # Se a gramática estiver a transformar isto em string, não conseguimos
+        # recuperar os pares sem melhorar a gramática.
+        return []
+    
     def _specialize_call(self, qname, args, kwargs):
         short = qname.split(".")[-1]
 
@@ -385,6 +466,7 @@ class LaunchPythonTransformer(Transformer):
                 "remappings": kwargs.get("remappings", []),
                 "arguments": kwargs.get("arguments", kwargs.get("ros_arguments")),
                 "launch_prefix": kwargs.get("launch_prefix"),
+                "condition": kwargs.get("condition"),
             }
 
         if short == "DeclareLaunchArgument":
@@ -400,8 +482,16 @@ class LaunchPythonTransformer(Transformer):
 
         if short == "IncludeLaunchDescription":
             source_value = args[0] if args else kwargs.get("launch_description_source")
-            return {"type": "include", "file": source_value, "args": []}
 
+            raw_launch_args = kwargs.get("launch_arguments", [])
+            launch_args = self._extract_launch_arguments(raw_launch_args)
+
+            return {
+                "type": "include",
+                "file": source_value,
+                "args": launch_args,
+            }
+            
         if short == "LaunchDescription":
             # launch.LaunchDescription([...]) chamado como call genérico
             actions_raw = args[0] if args else []
@@ -476,6 +566,17 @@ class LaunchPythonTransformer(Transformer):
                 "composable_nodes_ref": nodes_raw,  # resolver em _consume_actions
             }
 
+        if short == "SetParameter":
+            name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
+            value = self._resolve(args[1]) if len(args) > 1 else self._resolve(kwargs.get("value"))
+
+            return {
+                "type": "set_parameter",
+                "name": name,
+                "value": value,
+                "target_scope": "local",
+            }
+        
         if short == "SetEnvironmentVariable":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
             value = self._resolve(args[1]) if len(args) > 1 else self._resolve(kwargs.get("value"))
@@ -497,16 +598,85 @@ class LaunchPythonTransformer(Transformer):
             path_value = args[0] if args else kwargs.get("location")
             return {"type": "launch_source", "source_type": short, "path": path_value}
 
+        if short == "IfCondition":
+            expr = self._resolve(args[0]) if args else self._resolve(kwargs.get("predicate"))
+            return {
+                "type": "if_condition",
+                "condition": self._condition_expr_to_ir(expr),
+            }
+
+        if short == "UnlessCondition":
+            expr = self._resolve(args[0]) if args else self._resolve(kwargs.get("predicate"))
+            return {
+                "type": "unless_condition",
+                "condition": self._condition_expr_to_ir(expr),
+            }
+        
         return self._symbolic(qname, args, kwargs)
 
     def _symbolic(self, qname, args, kwargs):
         short = qname.split(".")[-1]
+
         if short == "LaunchConfiguration":
-            name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name", kwargs.get("variable_name")))
+            name = self._resolve(args[0]) if args else self._resolve(
+                kwargs.get("name", kwargs.get("variable_name"))
+            )
             default = kwargs.get("default_value", kwargs.get("default"))
-            return {"type": "launch_config", "name": name, "default": self._resolve(default)}
+
+            return {
+                "type": "launch_config",
+                "name": name,
+                "default": self._resolve(default),
+            }
+
+        if short == "EnvironmentVariable":
+            name = self._resolve(args[0]) if args else self._resolve(
+                kwargs.get("name", kwargs.get("variable_name"))
+            )
+            default = kwargs.get("default_value", kwargs.get("default"))
+
+            return {
+                "type": "env_var",
+                "name": name,
+                "default": self._resolve(default),
+            }
+
+        if short == "FindPackageShare":
+            package = self._resolve(args[0]) if args else self._resolve(
+                kwargs.get("package")
+            )
+
+            return {
+                "type": "find_pkg_share",
+                "package": package,
+            }
+
+        if short == "PathJoinSubstitution":
+            parts = self._resolve(args[0]) if args else self._resolve(
+                kwargs.get("substitutions", [])
+            )
+
+            if not isinstance(parts, list):
+                parts = [parts]
+
+            if parts and isinstance(parts[0], dict) and parts[0].get("type") == "find_pkg_share":
+                package = parts[0].get("package")
+                relative_parts = [str(self._resolve(p)) for p in parts[1:]]
+
+                return {
+                    "type": "file_path",
+                    "package": package,
+                    "relative_path": "/".join(relative_parts),
+                }
+
+            return {
+                "type": "path_join",
+                "parts": parts,
+            }
+
         parts = [repr(self._resolve(a)) for a in args]
         parts.extend(f"{k}={repr(self._resolve(v))}" for k, v in kwargs.items())
+
         return f"{qname}({', '.join(parts)})"
 
     def _resolve(self, value):
@@ -520,6 +690,7 @@ class LaunchPythonTransformer(Transformer):
             return tuple(self._resolve(v) for v in value)
         if isinstance(value, dict):
             if value.get("type") in {"arg", "include", "set_env", "unset_env",
+                                        "set_parameter",
                                       "executable", "add_action", "launch_source",
                                       "launch_config", "node_raw"}:
                 return {k: self._resolve(v) for k, v in value.items()}
@@ -529,9 +700,10 @@ class LaunchPythonTransformer(Transformer):
     def _is_action(self, value):
         if isinstance(value, dict):
             return value.get("type") in {"arg", "include", "set_env", "unset_env",
-                                          "executable", "node_raw", "push_namespace",
-                                          "group_action", "composable_container",
-                                          "load_composable_nodes"}
+                                        "set_parameter",
+                                        "executable", "node_raw", "push_namespace",
+                                        "group_action", "composable_container",
+                                        "load_composable_nodes"}
         return False
 
     def _process_top_level(self, item):
@@ -733,6 +905,19 @@ class LaunchPythonTransformer(Transformer):
                         id=self._id_gen.generate(f"push_ns_{ns}"),
                         action_type=ActionType.PUSH_NAMESPACE,
                         namespace=self._sub(ns),
+                        provenance=self._provenance(),
+                    ))
+
+                elif t == "set_parameter":
+                    name = action.get("name", "")
+                    value = action.get("value")
+
+                    self._ld.add_action(SetParameterAction(
+                        id=self._id_gen.generate(f"set_param_{name}"),
+                        action_type=ActionType.SET_PARAMETER,
+                        name=str(name) if name else "",
+                        value=self._sub(value),
+                        target_scope=action.get("target_scope", "local"),
                         provenance=self._provenance(),
                     ))
 
