@@ -1,42 +1,27 @@
 """
-test_python_launches.py
+test_launchfiles.py
 
 Testa o parser Python em todos os launch files .py encontrados
-nas pastas indicadas, e mostra um resumo detalhado dos resultados.
+nas pastas indicadas, mostra um resumo e guarda os JSONs Layer 2
+na pasta output/.
 
 Uso:
-    python3 test_python_launches.py
-    python3 test_python_launches.py examples/real-python
-    python3 test_python_launches.py examples/real-python examples/outro
+    python3 test_launchfiles.py
+    python3 test_launchfiles.py examples/real-python
+    python3 test_launchfiles.py examples/real-python examples/outro
 """
 
 import sys
 import os
 
-# ---------------------------------------------------------------------------
-# Configuração — pastas a pesquisar (podes adicionar mais)
-# ---------------------------------------------------------------------------
+DEFAULT_DIRS = ["examples/real-python"]
+OUTPUT_DIR = "output"
 
-DEFAULT_DIRS = [
-    "examples/real-python",
-]
-
-# ---------------------------------------------------------------------------
-# Setup do parser
-# ---------------------------------------------------------------------------
 
 def build_parser():
     from parsers.python.parser import PythonLaunchParser
     return PythonLaunchParser()
 
-
-def build_transformer():
-    return None  # transformer já está encapsulado no PythonLaunchParser
-
-
-# ---------------------------------------------------------------------------
-# Descobrir ficheiros
-# ---------------------------------------------------------------------------
 
 def find_launch_files(dirs):
     files = []
@@ -51,92 +36,94 @@ def find_launch_files(dirs):
     return sorted(files)
 
 
-# ---------------------------------------------------------------------------
-# Testar um ficheiro
-# ---------------------------------------------------------------------------
-
-def test_file(parser, TransformerClass, path):
+def test_file(parser, path):
     try:
-        tree, arch = parser.parse(path)
+        tree, ld = parser.parse(path)
+
+        from models.layer2 import NodeAction, DeclareArgumentAction, IncludeAction
+        nodes    = sum(1 for a in ld.actions.values()
+                       if isinstance(a, NodeAction) and a.package
+                       and a.package.value != "__executable__")
+        args     = sum(1 for a in ld.actions.values() if isinstance(a, DeclareArgumentAction))
+        includes = sum(1 for a in ld.actions.values() if isinstance(a, IncludeAction))
+
+        # Guardar JSON em output/
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        base_name = os.path.splitext(os.path.basename(path))[0]
+        json_path = os.path.join(OUTPUT_DIR, f"{base_name}.layer2.json")
+        with open(json_path, "w", encoding="utf-8") as f:
+            f.write(ld.to_json(indent=2))
+
+        # Validação Layer 2
+        from models.layer2 import Layer2Validator
+        errors = Layer2Validator().validate(ld)
 
         return {
             "status": "OK",
-            "nodes": len(arch.nodes),
-            "topics": len(arch.topics),
-            "args": len(arch.args),
-            "includes": len(arch.includes),
+            "nodes": nodes,
+            "args": args,
+            "includes": includes,
+            "total_actions": len(ld.actions),
+            "valid": len(errors) == 0,
+            "validation_errors": len(errors),
+            "json_path": json_path,
             "error": None,
         }
 
     except Exception as e:
-        # Extrair a mensagem mais útil do erro
-        msg = str(e)
-        # Tentar extrair linha e coluna se disponível
         import re
+        msg = str(e)
         m = re.search(r"line (\d+)[^\n]*col(?:umn)? (\d+)", msg)
         location = f" (linha {m.group(1)}, col {m.group(2)})" if m else ""
-
-        # Pegar só a primeira linha da mensagem
-        short_msg = msg.split("\n")[0][:100]
-
         return {
             "status": "ERRO",
-            "nodes": 0,
-            "topics": 0,
-            "args": 0,
-            "includes": 0,
-            "error": short_msg + location,
+            "nodes": 0, "args": 0, "includes": 0, "total_actions": 0,
+            "valid": False, "validation_errors": 0, "json_path": None,
+            "error": msg.split("\n")[0][:100] + location,
         }
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main():
     dirs = sys.argv[1:] if len(sys.argv) > 1 else DEFAULT_DIRS
 
     print(f"\n{'='*70}")
-    print(f"  Teste do Parser Python — Launch Files")
+    print(f"  Teste do Parser Python — Layer 2")
     print(f"  Pastas: {', '.join(dirs)}")
+    print(f"  JSONs em: {OUTPUT_DIR}/")
     print(f"{'='*70}\n")
 
-    # Construir parser
     try:
         parser = build_parser()
-        TransformerClass = build_transformer()
     except Exception as e:
         print(f"[ERRO] Não foi possível inicializar o parser: {e}")
         sys.exit(1)
 
-    # Descobrir ficheiros
     files = find_launch_files(dirs)
     if not files:
-        print("Nenhum launch file Python encontrado nas pastas indicadas.")
+        print("Nenhum launch file Python encontrado.")
         sys.exit(0)
 
     print(f"Ficheiros encontrados: {len(files)}\n")
 
-    # Testar cada ficheiro
     results = []
     for path in files:
-        result = test_file(parser, None, path)
+        result = test_file(parser, path)
         results.append((path, result))
 
-        status = result["status"]
         name = os.path.relpath(path)
-
-        if status == "OK":
+        if result["status"] == "OK":
+            valid_str = "✓" if result["valid"] else f"✗ ({result['validation_errors']} erros)"
             print(f"  ✓  {name}")
-            print(f"       nodes={result['nodes']}  tópicos={result['topics']}  "
-                  f"args={result['args']}  includes={result['includes']}")
+            print(f"       acções={result['total_actions']}  nodes={result['nodes']}  "
+                  f"args={result['args']}  includes={result['includes']}  "
+                  f"validação={valid_str}")
+            print(f"       → {result['json_path']}")
         else:
             print(f"  ✗  {name}")
             print(f"       {result['error']}")
 
-    # Resumo
-    ok = [r for _, r in results if r["status"] == "OK"]
-    err = [r for _, r in results if r["status"] == "ERRO"]
+    ok  = [(p, r) for p, r in results if r["status"] == "OK"]
+    err = [(p, r) for p, r in results if r["status"] == "ERRO"]
 
     print(f"\n{'='*70}")
     print(f"  RESULTADO: {len(ok)}/{len(results)} ficheiros OK")
@@ -144,18 +131,20 @@ def main():
 
     if err:
         print(f"\nFicheiros com erro ({len(err)}):")
-        for path, result in results:
-            if result["status"] == "ERRO":
-                print(f"  - {os.path.relpath(path)}")
-                print(f"    {result['error']}")
+        for path, result in err:
+            print(f"  - {os.path.relpath(path)}")
+            print(f"    {result['error']}")
 
-    # Estatísticas globais dos OK
     if ok:
-        total_nodes = sum(r["nodes"] for r in ok)
-        total_topics = sum(r["topics"] for r in ok)
-        print(f"\nEstatísticas (ficheiros OK):")
-        print(f"  Total nodes extraídos:   {total_nodes}")
-        print(f"  Total tópicos extraídos: {total_topics}")
+        invalid = sum(1 for _, r in ok if not r["valid"])
+        print(f"\nEstatísticas:")
+        print(f"  Nodes extraídos:  {sum(r['nodes'] for _, r in ok)}")
+        print(f"  Args extraídos:   {sum(r['args'] for _, r in ok)}")
+        print(f"  JSONs guardados:  {len(ok)}  →  {OUTPUT_DIR}/")
+        if invalid:
+            print(f"  ⚠ Validação falhou em {invalid} ficheiro(s)")
+        else:
+            print(f"  ✓ Todos os ficheiros passaram a validação Layer 2")
 
     print()
     return 0 if not err else 1

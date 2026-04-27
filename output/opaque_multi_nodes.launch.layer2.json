@@ -1,0 +1,33 @@
+{
+  "id": "launch_desc_file_examples_real_python_opaque_multi_nodes_launch_py",
+  "launch_file_id": "file_examples_real_python_opaque_multi_nodes_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_opaque_multi_nodes_launch_py:48c98c74#0": {
+      "id": "la:file_examples_real_python_opaque_multi_nodes_launch_py:48c98c74#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/opaque_multi_nodes.launch.py"
+        }
+      },
+      "name": "num_node_pairs",
+      "default_value": {
+        "type": "literal",
+        "value": "1"
+      }
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_opaque_multi_nodes_launch_py:48c98c74#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/opaque_multi_nodes.launch.py"
+    }
+  }
+}

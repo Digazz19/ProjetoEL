@@ -1,88 +1,253 @@
+"""
+transformerPython.py — Layer 2
+
+Transformer Lark para launch files Python.
+Produz um LaunchDescription Layer 2 conforme a especificação HAROS.
+"""
+
 from lark import Transformer
-from models.architectureROS import ArchitectureROS, Node, Param, Remapping
+
+
+import re as _re
+
+
+def _parse_condition_to_ir(condition_str: str) -> list:
+    """Converte string de condição Python para IR Layer 2."""
+    s = condition_str.strip()
+    # or
+    parts = _re.split(r'\s+or\s+', s)
+    if len(parts) > 1:
+        result = _parse_condition_to_ir(parts[0])
+        for p in parts[1:]:
+            result = ["or", result, _parse_condition_to_ir(p)]
+        return result
+    # and
+    parts = _re.split(r'\s+and\s+', s)
+    if len(parts) > 1:
+        result = _parse_condition_to_ir(parts[0])
+        for p in parts[1:]:
+            result = ["and", result, _parse_condition_to_ir(p)]
+        return result
+    # not
+    m = _re.match(r'^not\s+(.+)$', s)
+    if m:
+        return ["not", _parse_condition_to_ir(m.group(1))]
+    # comparações
+    for op, ir_op in [("==", "eq"), ("!=", "neq"), ("<=", "lte"), (">=", "gte"), ("<", "lt"), (">", "gt")]:
+        if op in s:
+            left, right = s.split(op, 1)
+            left = left.strip()
+            right = right.strip().strip("\'\"")
+            return [ir_op, _parse_var_ir(left), right]
+    return ["truthy", _parse_var_ir(s)]
+
+
+def _parse_var_ir(name: str) -> list:
+    name = name.strip()
+    if name.isupper():
+        return ["env_get", name]
+    if name.startswith("os.environ"):
+        m = _re.search(r"['\"]([\w]+)[\'\"]", name)
+        return ["env_get", m.group(1) if m else name]
+    if "LaunchConfiguration" in name:
+        m = _re.search(r"['\"]([\w]+)[\'\"]", name)
+        return ["launch_arg_get", m.group(1) if m else name]
+    return ["var_get", name]
+
+
+from models.layer2 import (
+    LaunchDescription,
+    LaunchSubstitution,
+    ElementProvenance,
+    SourceLocation,
+    ActionIDGenerator,
+    DeclareArgumentAction,
+    SetParameterAction,
+    PushNamespaceAction,
+    NodeAction,
+    IncludeAction,
+    GroupAction,
+    Remapping,
+    ActionType,
+)
 
 
 class LaunchPythonTransformer(Transformer):
-    def __init__(self):
+
+    def __init__(self, file_path: str = "unknown.launch.py"):
         super().__init__()
-        self.arch = ArchitectureROS()
+        self._file_path = file_path
+        self._file_id = ActionIDGenerator.file_id_from_path(file_path)
+        self._id_gen = ActionIDGenerator(self._file_id)
+        # Estado intermédio (igual ao transformer antigo)
         self.variables = {}
         self.launch_descriptions = {}
+        # LaunchDescription Layer 2 em construção
+        self._ld = None
+
+    def _provenance(self, confidence: float = 1.0) -> ElementProvenance:
+        return ElementProvenance(
+            extraction_method="static_analysis",
+            source_location=SourceLocation(file=self._file_path),
+            confidence=confidence,
+        )
+
+    def _sub(self, value) -> LaunchSubstitution:
+        """Converte um valor raw para LaunchSubstitution."""
+        if isinstance(value, LaunchSubstitution):
+            return value
+        if value is None:
+            return LaunchSubstitution.literal(None)
+        if isinstance(value, bool):
+            return LaunchSubstitution.literal(value)
+        if isinstance(value, (int, float)):
+            return LaunchSubstitution.literal(value)
+        if isinstance(value, dict):
+            t = value.get("type")
+            if t == "var":
+                # Tentar resolver a variável
+                name = value.get("name", "")
+                if name in self.variables:
+                    return self._sub(self.variables[name])
+                return LaunchSubstitution.argument_reference(name)
+            if t == "launch_config":
+                return LaunchSubstitution.argument_reference(
+                    value.get("name", ""), value.get("default")
+                )
+            if t == "env_var":
+                return LaunchSubstitution.environment_variable(
+                    value.get("name", ""), value.get("default")
+                )
+        return LaunchSubstitution.literal(str(value)) if value is not None else LaunchSubstitution.literal(None)
+
+    def _make_node_action(self, node_data: dict, condition: str = None) -> NodeAction:
+        """Cria um NodeAction a partir de um dict de node."""
+        pkg = node_data.get("package") or node_data.get("pkg")
+        exe = node_data.get("executable") or node_data.get("exec")
+        name = node_data.get("name")
+        ns = node_data.get("namespace")
+
+        # Parâmetros
+        params = {}
+        raw_params = node_data.get("params") or node_data.get("parameters") or []
+        if isinstance(raw_params, list):
+            for p in raw_params:
+                p = self._resolve(p)
+                if isinstance(p, dict):
+                    for k, v in p.items():
+                        if k != "type":
+                            params[str(k)] = self._sub(v)
+                elif hasattr(p, 'name') and hasattr(p, 'value'):
+                    params[str(p.name)] = self._sub(str(p.value))
+        elif isinstance(raw_params, dict):
+            for k, v in raw_params.items():
+                params[str(k)] = self._sub(v)
+
+        # Remaps
+        remaps = []
+        for r in (node_data.get("remappings") or []):
+            r = self._resolve(r)
+            if isinstance(r, tuple) and len(r) == 2:
+                remaps.append(Remapping(from_topic=str(r[0]), to_topic=self._sub(str(r[1]))))
+            elif isinstance(r, dict) and "src" in r:
+                remaps.append(Remapping(from_topic=str(r["src"]), to_topic=self._sub(str(r["dst"]))))
+
+        # Condições
+        cond_list = []
+        if condition:
+            try:
+                cond_list = [_parse_condition_to_ir(condition)]
+            except Exception:
+                cond_list = [["symbolic", condition]]
+
+        # ros_arguments — converter para LaunchSubstitution e serializar
+        ros_args = []
+        raw_args = node_data.get("arguments")
+        if isinstance(raw_args, list):
+            for a in raw_args:
+                if a is None:
+                    continue
+                resolved = self._resolve(a)
+                sub = self._sub(resolved)
+                ros_args.append(sub.display())
+        elif raw_args is not None:
+            ros_args = [self._sub(self._resolve(raw_args)).display()]
+
+        # launch_prefix
+        launch_prefix = node_data.get("launch_prefix")
+        if launch_prefix:
+            launch_prefix = str(self._resolve(launch_prefix))
+
+        snippet = f"Node(pkg={pkg},exec={exe},name={name})"
+        return NodeAction(
+            id=self._id_gen.generate(snippet),
+            action_type=ActionType.NODE,
+            package=self._sub(pkg),
+            executable=self._sub(exe),
+            name=self._sub(name) if name else None,
+            namespace=self._sub(ns) if ns else None,
+            parameters=params,
+            remappings=remaps,
+            ros_arguments=ros_args,
+            launch_prefix=launch_prefix,
+            conditions=cond_list,
+            provenance=self._provenance(0.9 if condition else 1.0),
+        )
+
+    # -----------------------------------------------------------------------
+    # Regras de gramática (igual ao transformer antigo)
+    # -----------------------------------------------------------------------
 
     def start(self, items):
+        ld_id = f"launch_desc_{self._file_id}"
+        self._ld = LaunchDescription(
+            id=ld_id,
+            launch_file_id=self._file_id,
+            format="python",
+            provenance=ElementProvenance(
+                extraction_method="static_analysis",
+                source_location=SourceLocation(file=self._file_path),
+                confidence=0.85,
+            ),
+        )
         for item in items:
             self._process_top_level(item)
-        self.arch.resolve()
-        return self.arch
+        return self._ld
 
     def stmt(self, items):
         return items[0] if items else None
 
-    def import_stmt(self, items):
-        return None
-
-    def import_list(self, items):
-        return items
-
-    def import_item(self, items):
-        return None
-
-    def dotted_name(self, items):
-        return ".".join(str(x) for x in items)
-
-    def funcdef(self, items):
-        return {"type": "function", "body": items[-1]}
-
-    def suite(self, items):
-        return [item for item in items if item is not None]
-
-    def func_stmt(self, items):
-        return items[0] if items else None
-
-    def assign_stmt(self, items):
-        return ("assign", str(items[0]), items[1])
-
-    def expr_stmt(self, items):
-        return items[0]
-
-    def return_stmt(self, items):
-        return ("return", items[0])
-
+    def import_stmt(self, items): return None
+    def import_list(self, items): return items
+    def import_item(self, items): return None
+    def dotted_name(self, items): return ".".join(str(x) for x in items)
+    def funcdef(self, items): return {"type": "function", "body": items[-1]}
+    def suite(self, items): return [item for item in items if item is not None]
+    def func_stmt(self, items): return items[0] if items else None
+    def assign_stmt(self, items): return ("assign", str(items[0]), items[1])
+    def expr_stmt(self, items): return items[0]
+    def return_stmt(self, items): return ("return", items[0])
     def method_call(self, items):
+        # items[0] = objecto, items[1] = método, items[2] = argumento (opcional)
+        # Mas a gramática define: NAME "." "add_action" "(" expr ")"
+        # Para append precisamos de uma regra mais genérica
         return {"type": "add_action", "target": str(items[0]), "action": items[1]}
 
-    def launch_description(self, items):
-        if not items:
-            return {"type": "launch_description", "actions": []}
+    def list_append(self, items):
+        # NAME.append(expr) — adicionar item a uma lista variável
+        return {"type": "list_append", "target": str(items[0]), "item": items[1]}
 
-        source = self._resolve(items[0])
-        actions = []
-        if isinstance(source, list):
-            actions = [a for a in source if self._is_action(a)]
-        elif source is not None and self._is_action(source):
-            actions = [source]
-        return {"type": "launch_description", "actions": actions}
-
-    def qualified_name(self, items):
-        return ".".join(str(x) for x in items)
-
-    def call(self, items):
-        return self._build_call(items)
-
-    def arguments(self, items):
-        return items
-
-    def kw_argument(self, items):
-        return (str(items[0]), items[1])
-
-    def pos_argument(self, items):
-        return items[0]
-
+    def list_append_stmt(self, items):
+        # list_append_stmt: NAME "." "append" "(" expr ")" _NEWLINE
+        return {"type": "list_append", "target": str(items[0]), "item": items[1]}
+    def qualified_name(self, items): return ".".join(str(x) for x in items)
+    def call(self, items): return self._build_call(items)
+    def arguments(self, items): return items
+    def kw_argument(self, items): return (str(items[0]), items[1])
+    def pos_argument(self, items): return items[0]
     def list(self, items):
-        return list(items)
-
-    def tuple(self, items):
-        return tuple(items)
+        return [i for i in items if i is not None]
+    def tuple(self, items): return tuple(items)
 
     def dict(self, items):
         result = {}
@@ -91,65 +256,54 @@ class LaunchPythonTransformer(Transformer):
                 result[item[0]] = item[1]
         return result
 
-    def dict_call(self, items):
-        # dict.method() — ignoramos o resultado, devolvemos string simbólica
-        return f"{items[0]}.{items[1]}()"
+    def dict_call(self, items): return f"{items[0]}.{items[1]}()"
+    def dict_item(self, items): return (items[0], items[1])
 
     def list_add(self, items):
-        # list + list — concatenar as listas se possível
         result = []
         for item in items:
             if isinstance(item, list):
                 result.extend(item)
+            elif isinstance(item, dict) and item.get("type") == "var":
+                # Variável não resolvida — incluir para resolver mais tarde
+                result.append(item)
         return result
 
     def concat_string(self, items):
-        # string concatenação implícita: 'a' 'b' -> 'ab'
         parts = []
         for item in items:
             s = str(item)
-            if (s.startswith('"') and s.endswith('"')) or                (s.startswith("'") and s.endswith("'")):
+            if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
                 s = s[1:-1]
             parts.append(s)
         return ''.join(parts)
 
-    def top_assign(self, items):
-        return None
-
-    def class_def(self, items):
-        return None
-
-    def extra_funcdef(self, items):
-        return None
-
-    def with_stmt(self, items):
-        return None
+    def top_assign(self, items): return None
+    def class_def(self, items): return None
+    def extra_funcdef(self, items): return None
+    def with_stmt(self, items): return None
+    def closing_paren(self, items): return None
+    def ignored_stmt(self, items): return None
+    def string_call(self, items): return None
+    def subscript(self, items): return f"{items[0]}[...]"
+    def qualified_var(self, items): return ".".join(str(i) for i in items)
 
     def if_stmt(self, items):
-        # items[0] = IF_HDR token (ex: "if ROS_DISTRO == 'humble':")
-        # items[1] = suite do ramo if (lista de stmts)
-        # items[2..] = elif_clause* e else_clause (opcionais)
         results = []
         hdr = str(items[0])
-        # Extrair a condição do token (remover "if " do início e ":" do fim)
         condition = hdr[3:].rstrip(':').strip()
-
-        # Processar o suite do ramo if
         suite = items[1] if len(items) > 1 else []
         for item in (suite if isinstance(suite, list) else [suite]):
             if item is not None:
                 results.append(("if", condition, item))
-
-        # Processar elif e else
         for clause in items[2:]:
             if isinstance(clause, list):
                 results.extend(clause)
-
         return ("if_block", results)
 
     def elif_clause(self, items):
         hdr = str(items[0])
-        condition = hdr[5:].rstrip(':').strip()  # remover "elif "
+        condition = hdr[5:].rstrip(':').strip()
         suite = items[1] if len(items) > 1 else []
         results = []
         for item in (suite if isinstance(suite, list) else [suite]):
@@ -165,19 +319,24 @@ class LaunchPythonTransformer(Transformer):
                 results.append(("else", None, item))
         return results
 
-    def string_call(self, items):
-        # 'string'.method(args) — ignorado semanticamente
-        return None
-
-    def subscript(self, items):
-        # NAME[expr] — devolver string simbólica
-        return f"{items[0]}[...]"
-
-    def ignored_stmt(self, items):
-        return None
-
-    def dict_item(self, items):
-        return (items[0], items[1])
+    def launch_description(self, items):
+        if not items:
+            return {"type": "launch_description", "actions": []}
+        source = self._resolve(items[0])
+        actions = []
+        if isinstance(source, list):
+            for item in source:
+                resolved = self._resolve(item)
+                if self._is_action(resolved):
+                    actions.append(resolved)
+                elif isinstance(resolved, dict) and resolved.get("type") == "var":
+                    actions.append(resolved)
+        elif isinstance(source, dict) and source.get("type") == "var":
+            # Variável não resolvida (ex: declared_args) — guardar como referência pendente
+            actions.append(source)
+        elif source is not None and self._is_action(source):
+            actions = [source]
+        return {"type": "launch_description", "actions": actions}
 
     def string(self, items):
         value = str(items[0])
@@ -185,25 +344,18 @@ class LaunchPythonTransformer(Transformer):
 
     def number(self, items):
         text = str(items[0])
-        if "." in text:
-            return float(text)
-        return int(text)
+        return float(text) if "." in text else int(text)
 
-    def true(self, _):
-        return True
-
-    def false(self, _):
-        return False
-
-    def none(self, _):
-        return None
+    def true(self, _): return True
+    def false(self, _): return False
+    def none(self, _): return None
 
     def var(self, items):
         return {"type": "var", "name": str(items[0])}
 
-    def qualified_var(self, items):
-        # sys.argv, os.path, etc. — devolver como string simbólica
-        return ".".join(str(i) for i in items)
+    # -----------------------------------------------------------------------
+    # Lógica de resolução (igual ao transformer antigo)
+    # -----------------------------------------------------------------------
 
     def _build_call(self, items):
         qname = items[0]
@@ -221,25 +373,108 @@ class LaunchPythonTransformer(Transformer):
 
     def _specialize_call(self, qname, args, kwargs):
         short = qname.split(".")[-1]
+
         if short == "Node":
-            return Node(
-                name=kwargs.get("name"),
-                package=kwargs.get("package", kwargs.get("pkg")),
-                exec=kwargs.get("executable", kwargs.get("exec")),
-                namespace=kwargs.get("namespace"),
-                remappings=self._convert_remaps(kwargs.get("remappings", [])),
-                params=kwargs.get("parameters", kwargs.get("params", [])),
-                args=kwargs.get("arguments", kwargs.get("ros_arguments"))
-            )
+            return {
+                "type": "node_raw",
+                "package": kwargs.get("package", kwargs.get("pkg")),
+                "executable": kwargs.get("executable", kwargs.get("exec")),
+                "name": kwargs.get("name"),
+                "namespace": kwargs.get("namespace"),
+                "params": kwargs.get("parameters", kwargs.get("params", [])),
+                "remappings": kwargs.get("remappings", []),
+                "arguments": kwargs.get("arguments", kwargs.get("ros_arguments")),
+                "launch_prefix": kwargs.get("launch_prefix"),
+            }
 
         if short == "DeclareLaunchArgument":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
             default = kwargs.get("default_value", kwargs.get("default"))
-            return {"type": "arg", "name": name, "default": self._resolve(default)}
-        
+            desc = kwargs.get("description")
+            choices = kwargs.get("choices")
+            choices_resolved = self._resolve(choices) if choices is not None else None
+            if isinstance(choices_resolved, (list, tuple)):
+                choices_resolved = [str(c) for c in choices_resolved]
+            return {"type": "arg", "name": name, "default": self._resolve(default),
+                    "description": self._resolve(desc), "choices": choices_resolved}
+
         if short == "IncludeLaunchDescription":
             source_value = args[0] if args else kwargs.get("launch_description_source")
             return {"type": "include", "file": source_value, "args": []}
+
+        if short == "LaunchDescription":
+            # launch.LaunchDescription([...]) chamado como call genérico
+            actions_raw = args[0] if args else []
+            actions = self._resolve(actions_raw) if actions_raw else []
+            if isinstance(actions, dict) and actions.get("type") == "var":
+                actions = [actions]
+            elif not isinstance(actions, list):
+                actions = []
+            return {"type": "launch_description", "actions": actions}
+
+        if short == "PushRosNamespace":
+            ns = self._resolve(args[0]) if args else self._resolve(kwargs.get("namespace"))
+            return {"type": "push_namespace", "namespace": ns}
+
+        if short == "GroupAction":
+            children = self._resolve(args[0]) if args else self._resolve(kwargs.get("actions", []))
+            if not isinstance(children, list):
+                children = [children] if children else []
+            return {"type": "group_action", "children": children}
+
+        if short == "ComposableNode":
+            # ComposableNode usa plugin em vez de executable
+            pkg = kwargs.get("package")
+            plugin = kwargs.get("plugin")  # ex: "camera::CameraNode"
+            name = kwargs.get("name")
+            ns = kwargs.get("namespace")
+            params = kwargs.get("parameters", [])
+            remaps = kwargs.get("remappings", [])
+            return {
+                "type": "node_raw",
+                "package": pkg,
+                "executable": plugin,  # usar plugin como executable
+                "name": name,
+                "namespace": ns,
+                "params": params,
+                "remappings": remaps,
+                "arguments": None,
+                "launch_prefix": None,
+                "is_composable": True,
+            }
+
+        if short == "LoadComposableNodes":
+            # LoadComposableNodes carrega nodes num container existente
+            # Para análise estática, os composable nodes são extraídos da mesma forma
+            nodes_raw = kwargs.get("composable_node_descriptions", [])
+            if isinstance(nodes_raw, list):
+                # Lista inline — resolver directamente
+                nodes = [self._resolve(n) for n in nodes_raw]
+            else:
+                nodes_raw_resolved = self._resolve(nodes_raw)
+                nodes = nodes_raw_resolved if isinstance(nodes_raw_resolved, list) else []
+            target = kwargs.get("target_container")
+            return {
+                "type": "load_composable_nodes",
+                "target_container": target,
+                "composable_nodes": nodes,
+            }
+
+        if short == "ComposableNodeContainer":
+            pkg = kwargs.get("package")
+            exe = kwargs.get("executable")
+            name = kwargs.get("name")
+            ns = kwargs.get("namespace")
+            # Guardar a referência para resolver depois (quando as variables estão populadas)
+            nodes_raw = kwargs.get("composable_node_descriptions", [])
+            return {
+                "type": "composable_container",
+                "package": pkg,
+                "executable": exe,
+                "name": name,
+                "namespace": ns,
+                "composable_nodes_ref": nodes_raw,  # resolver em _consume_actions
+            }
 
         if short == "SetEnvironmentVariable":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
@@ -255,25 +490,21 @@ class LaunchPythonTransformer(Transformer):
                 "type": "executable",
                 "cmd": self._resolve(kwargs.get("cmd", args[0] if args else None)),
                 "cwd": self._resolve(kwargs.get("cwd")),
-                "env": self._convert_env(kwargs.get("additional_env", kwargs.get("env")))
+                "env": [],
             }
-
-        if short in {"LaunchConfiguration", "TextSubstitution", "EnvironmentVariable", "FindPackageShare", "ThisLaunchFileDir"}:
-            return self._symbolic(qname, args, kwargs)
 
         if short in {"PythonLaunchDescriptionSource", "XMLLaunchDescriptionSource", "YAMLLaunchDescriptionSource"}:
             path_value = args[0] if args else kwargs.get("location")
-            return {
-                "type": "launch_source",
-                "source_type": short,
-                "path": path_value
-            }
+            return {"type": "launch_source", "source_type": short, "path": path_value}
 
-        if short == "PathJoinSubstitution":
-            return self._symbolic(qname, args, kwargs)
         return self._symbolic(qname, args, kwargs)
 
     def _symbolic(self, qname, args, kwargs):
+        short = qname.split(".")[-1]
+        if short == "LaunchConfiguration":
+            name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name", kwargs.get("variable_name")))
+            default = kwargs.get("default_value", kwargs.get("default"))
+            return {"type": "launch_config", "name": name, "default": self._resolve(default)}
         parts = [repr(self._resolve(a)) for a in args]
         parts.extend(f"{k}={repr(self._resolve(v))}" for k, v in kwargs.items())
         return f"{qname}({', '.join(parts)})"
@@ -287,31 +518,21 @@ class LaunchPythonTransformer(Transformer):
             return [self._resolve(v) for v in value]
         if isinstance(value, tuple):
             return tuple(self._resolve(v) for v in value)
-        if isinstance(value, Node):
-            return Node(
-                name=self._resolve(value.name),
-                package=self._resolve(value.package),
-                exec=self._resolve(value.exec),
-                namespace=self._resolve(value.namespace),
-                remappings=self._convert_remaps(self._resolve(value.remappings) or []),
-                params=self._convert_params(self._resolve(value.params) or []),
-                args=self._resolve(value.args),
-            )
         if isinstance(value, dict):
-            if value.get("type") == "launch_description":
-                return {
-                    "type": "launch_description",
-                    "actions": [self._resolve(a) for a in value.get("actions", [])]
-                }
-
-            if value.get("type") in {
-                "arg", "include", "set_env", "unset_env",
-                "executable", "add_action", "launch_source"
-            }:
+            if value.get("type") in {"arg", "include", "set_env", "unset_env",
+                                      "executable", "add_action", "launch_source",
+                                      "launch_config", "node_raw"}:
                 return {k: self._resolve(v) for k, v in value.items()}
-
             return {self._resolve(k): self._resolve(v) for k, v in value.items()}
         return value
+
+    def _is_action(self, value):
+        if isinstance(value, dict):
+            return value.get("type") in {"arg", "include", "set_env", "unset_env",
+                                          "executable", "node_raw", "push_namespace",
+                                          "group_action", "composable_container",
+                                          "load_composable_nodes"}
+        return False
 
     def _process_top_level(self, item):
         if isinstance(item, dict) and item.get("type") == "function":
@@ -339,6 +560,17 @@ class LaunchPythonTransformer(Transformer):
                 target = stmt["target"]
                 action = self._resolve(stmt["action"])
                 self.launch_descriptions.setdefault(target, []).append(action)
+            elif isinstance(stmt, dict) and stmt.get("type") == "list_append":
+                target = stmt["target"]
+                item = self._resolve(stmt["item"])
+                # Se a variável existe como lista, adicionar
+                if target in self.variables and isinstance(self.variables[target], list):
+                    self.variables[target].append(item)
+                else:
+                    # Criar nova lista com o item
+                    self.variables.setdefault(target, [])
+                    if isinstance(self.variables[target], list):
+                        self.variables[target].append(item)
 
     def _process_if_item(self, item, condition):
         if item is None:
@@ -347,14 +579,13 @@ class LaunchPythonTransformer(Transformer):
         if kind == "assign":
             _, name, value = item
             resolved = self._resolve(value)
-            if isinstance(resolved, Node):
-                resolved.condition = condition
-                self.arch.add_node(resolved)
+            if isinstance(resolved, dict) and resolved.get("type") == "node_raw":
+                action = self._make_node_action(resolved, condition)
+                self._ld.add_action(action)
             elif isinstance(resolved, dict) and resolved.get("type") == "launch_description":
-                for action in resolved.get("actions", []):
-                    if isinstance(action, Node):
-                        action.condition = condition
-                        self.arch.add_node(action)
+                for a in resolved.get("actions", []):
+                    if isinstance(a, dict) and a.get("type") == "node_raw":
+                        self._ld.add_action(self._make_node_action(a, condition))
             else:
                 self.variables[name] = resolved
         elif kind == "return":
@@ -365,66 +596,163 @@ class LaunchPythonTransformer(Transformer):
                 combined = f"({condition}) and ({nested_cond})" if nested_cond else condition
                 self._process_if_item(nested_item, combined)
 
-
     def _consume_return(self, value):
         resolved = self._resolve(value)
         if isinstance(resolved, dict) and resolved.get("type") == "launch_description":
-            self._consume_actions(resolved["actions"])
+            actions = resolved["actions"]
+            # Flatten: resolver listas aninhadas (var refs resolvidas para listas)
+            expanded = []
+            for a in actions:
+                if isinstance(a, list):
+                    expanded.extend(a)
+                elif isinstance(a, dict) and a.get("type") == "var":
+                    var_val = self.variables.get(a["name"], [])
+                    if isinstance(var_val, list):
+                        expanded.extend(var_val)
+                    elif var_val is not None:
+                        expanded.append(var_val)
+                else:
+                    expanded.append(a)
+            self._consume_actions(expanded)
         elif isinstance(resolved, str) and resolved in self.launch_descriptions:
             self._consume_actions(self.launch_descriptions[resolved])
         elif isinstance(value, dict) and value.get("type") == "var":
             name = value["name"]
             if name in self.launch_descriptions:
                 self._consume_actions(self.launch_descriptions[name])
+            elif name in self.variables:
+                var_val = self.variables[name]
+                if isinstance(var_val, list):
+                    self._consume_actions(var_val)
 
     def _consume_actions(self, actions):
         for action in actions:
-            if isinstance(action, Node):
-                self.arch.add_node(action)
-            elif isinstance(action, dict):
-                kind = action.get("type")
-                if kind == "arg":
-                    self.arch.args[action["name"]] = action.get("default")
-                elif kind == "include":
-                    file_value = self._resolve(action.get("file"))
+            # Resolver variáveis pendentes
+            if isinstance(action, dict) and action.get("type") == "var":
+                action = self._resolve(action)
 
+            if isinstance(action, dict):
+                t = action.get("type")
+
+                if t == "node_raw":
+                    self._ld.add_action(self._make_node_action(action))
+
+                elif t == "arg":
+                    name = action.get("name", "")
+                    default = action.get("default")
+                    desc = action.get("description")
+                    choices = action.get("choices")
+                    self._ld.add_action(DeclareArgumentAction(
+                        id=self._id_gen.generate(f"arg_{name}"),
+                        action_type=ActionType.DECLARE_ARGUMENT,
+                        name=str(name) if name else "",
+                        default_value=self._sub(default) if default is not None else None,
+                        description=str(desc) if desc else None,
+                        choices=choices if isinstance(choices, list) else None,
+                        provenance=self._provenance(),
+                    ))
+
+                elif t == "include":
+                    file_value = self._resolve(action.get("file"))
                     if isinstance(file_value, dict) and file_value.get("type") == "launch_source":
                         file_value = file_value.get("path")
-                    
-                    self.arch.includes.append(file_value)
-                elif kind == "set_env":
-                    self.arch.env[action["name"]] = action.get("value")
-                elif kind == "unset_env":
-                    self.arch.unset_env.append(action["name"])
-                elif kind == "executable":
-                    self.arch.executables.append(action)
+                    file_str = str(file_value) if file_value else "unknown"
+                    included_id = ActionIDGenerator.file_id_from_path(file_str)
+                    arg_mappings = {}
+                    for arg in action.get("args", []):
+                        if isinstance(arg, dict) and arg.get("name"):
+                            arg_mappings[arg["name"]] = self._sub(arg.get("value") or arg.get("default"))
+                    self._ld.add_action(IncludeAction(
+                        id=self._id_gen.generate(f"include_{included_id}"),
+                        action_type=ActionType.INCLUDE,
+                        included_launch_id=f"launch_desc_{included_id}",
+                        argument_mappings=arg_mappings,
+                        provenance=self._provenance(),
+                    ))
 
-    def _is_action(self, value):
-        return isinstance(value, Node) or (isinstance(value, dict) and value.get("type") in {"arg", "include", "set_env", "unset_env", "executable"})
+                elif t == "group_action":
+                    children_items = action.get("children", [])
+                    if not isinstance(children_items, list):
+                        children_items = []
+                    # Criar o GroupAction primeiro
+                    group = GroupAction(
+                        id=self._id_gen.generate("group_action"),
+                        action_type=ActionType.GROUP,
+                        provenance=self._provenance(0.9),
+                    )
+                    self._ld.add_action(group)
+                    # Processar os filhos e capturar os seus IDs
+                    prev_seq = list(self._ld.launch_sequence)
+                    self._consume_actions(children_items)
+                    new_ids = [aid for aid in self._ld.launch_sequence if aid not in prev_seq]
+                    # Remover filhos da sequência principal e atribuir ao grupo
+                    for aid in new_ids:
+                        self._ld.launch_sequence.remove(aid)
+                    group.children = new_ids
 
-    def _convert_remaps(self, remaps):
-        result = []
-        for item in remaps:
-            item = self._resolve(item)
-            if isinstance(item, Remapping):
-                result.append(item)
-            elif isinstance(item, tuple) and len(item) == 2:
-                result.append(Remapping(src=item[0], dst=item[1]))
-            elif isinstance(item, list) and len(item) == 2:
-                result.append(Remapping(src=item[0], dst=item[1]))
-        return result
+                elif t == "load_composable_nodes":
+                    # Processar os composable nodes directamente
+                    composable_nodes = action.get("composable_nodes", [])
+                    if not isinstance(composable_nodes, list):
+                        composable_nodes = [composable_nodes] if composable_nodes else []
+                    if composable_nodes:
+                        self._consume_actions(composable_nodes)
 
-    def _convert_params(self, params_raw):
-        params = []
-        for item in params_raw:
-            item = self._resolve(item)
-            if isinstance(item, dict):
-                for key, value in item.items():
-                    params.append(Param(str(key), value))
-        return params
+                elif t == "composable_container":
+                    # O container em si é um node
+                    pkg = action.get("package")
+                    exe = action.get("executable")
+                    name = action.get("name")
+                    ns = action.get("namespace")
+                    if pkg and exe:
+                        container_node = {
+                            "type": "node_raw",
+                            "package": pkg,
+                            "executable": exe,
+                            "name": name,
+                            "namespace": ns,
+                            "params": [],
+                            "remappings": [],
+                            "arguments": None,
+                            "launch_prefix": None,
+                        }
+                        self._ld.add_action(self._make_node_action(container_node))
+                    # Resolver a referência aos composable nodes agora que as variables estão populadas
+                    nodes_ref = action.get("composable_nodes_ref", [])
+                    composable_nodes = self._resolve(nodes_ref)
+                    if isinstance(composable_nodes, dict) and composable_nodes.get("type") == "var":
+                        composable_nodes = self.variables.get(composable_nodes["name"], [])
+                    if not isinstance(composable_nodes, list):
+                        composable_nodes = [composable_nodes] if composable_nodes else []
+                    if composable_nodes:
+                        self._consume_actions(composable_nodes)
 
-    def _convert_env(self, env_value):
-        env_value = self._resolve(env_value)
-        if isinstance(env_value, dict):
-            return [{"type": "env", "name": str(k), "value": v} for k, v in env_value.items()]
-        return []
+                elif t == "push_namespace":
+                    ns = action.get("namespace")
+                    self._ld.add_action(PushNamespaceAction(
+                        id=self._id_gen.generate(f"push_ns_{ns}"),
+                        action_type=ActionType.PUSH_NAMESPACE,
+                        namespace=self._sub(ns),
+                        provenance=self._provenance(),
+                    ))
+
+                elif t == "set_env":
+                    self._ld.add_action(SetParameterAction(
+                        id=self._id_gen.generate(f"set_env_{action.get('name','')}"),
+                        action_type=ActionType.SET_PARAMETER,
+                        name=str(action.get("name", "")),
+                        value=self._sub(action.get("value")),
+                        target_scope="global",
+                        provenance=self._provenance(),
+                    ))
+
+                elif t == "executable":
+                    # ExecuteProcess modelado como NodeAction especial
+                    cmd = action.get("cmd")
+                    self._ld.add_action(NodeAction(
+                        id=self._id_gen.generate(f"exec_{cmd}"),
+                        action_type=ActionType.NODE,
+                        package=LaunchSubstitution.literal("__executable__"),
+                        executable=LaunchSubstitution.literal(str(cmd)),
+                        provenance=self._provenance(),
+                    ))

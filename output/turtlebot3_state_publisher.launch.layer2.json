@@ -1,0 +1,65 @@
+{
+  "id": "launch_desc_file_examples_real_python_turtlebot3_state_publisher_launch_py",
+  "launch_file_id": "file_examples_real_python_turtlebot3_state_publisher_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_turtlebot3_state_publisher_launch_py:c055eba9#0": {
+      "id": "la:file_examples_real_python_turtlebot3_state_publisher_launch_py:c055eba9#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/turtlebot3_state_publisher.launch.py"
+        }
+      },
+      "name": "use_sim_time",
+      "default_value": {
+        "type": "literal",
+        "value": "false"
+      },
+      "description": "Use simulation (Gazebo) clock if true"
+    },
+    "la:file_examples_real_python_turtlebot3_state_publisher_launch_py:e8211131#0": {
+      "id": "la:file_examples_real_python_turtlebot3_state_publisher_launch_py:e8211131#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/turtlebot3_state_publisher.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "robot_state_publisher"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "robot_state_publisher"
+      },
+      "parameters": {
+        "robot_description": {
+          "type": "literal",
+          "value": "Command(['xacro ', {'type': 'var', 'name': 'urdf'}, ' namespace:=', 'PythonExpression([\\'\"\\', {\\'type\\': \\'var\\', \\'name\\': \\'namespace\\'}, \\'\" + \"/\" if \"\\', {\\'type\\': \\'var\\', \\'name\\': \\'namespace\\'}, \\'\" != \"\" else \"\"\\'])'])"
+        },
+        "use_sim_time": {
+          "type": "argument_reference",
+          "argument_name": "use_sim_time",
+          "default_value": "false"
+        }
+      }
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_turtlebot3_state_publisher_launch_py:c055eba9#0",
+    "la:file_examples_real_python_turtlebot3_state_publisher_launch_py:e8211131#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/turtlebot3_state_publisher.launch.py"
+    }
+  }
+}

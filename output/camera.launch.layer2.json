@@ -1,0 +1,174 @@
+{
+  "id": "launch_desc_file_examples_real_python_camera_launch_py",
+  "launch_file_id": "file_examples_real_python_camera_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_camera_launch_py:66b370eb#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:66b370eb#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/camera.launch.py"
+        }
+      },
+      "name": "camera",
+      "default_value": {
+        "type": "literal",
+        "value": "str(0)"
+      },
+      "description": "camera ID or name"
+    },
+    "la:file_examples_real_python_camera_launch_py:57082737#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:57082737#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/camera.launch.py"
+        }
+      },
+      "name": "format",
+      "default_value": {
+        "type": "literal",
+        "value": "str()"
+      },
+      "description": "pixel format"
+    },
+    "la:file_examples_real_python_camera_launch_py:818d293e#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:818d293e#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/camera.launch.py"
+        }
+      },
+      "name": "use_image_view",
+      "default_value": {
+        "type": "literal",
+        "value": "false"
+      },
+      "description": "Whether to launch image_view (true/false)"
+    },
+    "la:file_examples_real_python_camera_launch_py:bf20b20e#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:bf20b20e#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/camera.launch.py"
+        }
+      },
+      "name": "width",
+      "default_value": {
+        "type": "literal",
+        "value": "640"
+      },
+      "description": "Camera image width"
+    },
+    "la:file_examples_real_python_camera_launch_py:21a0b97e#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:21a0b97e#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/camera.launch.py"
+        }
+      },
+      "name": "height",
+      "default_value": {
+        "type": "literal",
+        "value": "480"
+      },
+      "description": "Camera image height"
+    },
+    "la:file_examples_real_python_camera_launch_py:33a2ef08#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:33a2ef08#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/camera.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "rclcpp_components"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "component_container"
+      },
+      "name": {
+        "type": "literal",
+        "value": "camera_container"
+      }
+    },
+    "la:file_examples_real_python_camera_launch_py:0a627d89#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:0a627d89#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/camera.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "camera_ros"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "camera::CameraNode"
+      },
+      "parameters": {
+        "camera": {
+          "type": "argument_reference",
+          "argument_name": "camera",
+          "default_value": "str(0)"
+        },
+        "sensor_mode": {
+          "type": "literal",
+          "value": "1640:1232"
+        },
+        "width": {
+          "type": "argument_reference",
+          "argument_name": "width"
+        },
+        "height": {
+          "type": "argument_reference",
+          "argument_name": "height"
+        },
+        "format": {
+          "type": "argument_reference",
+          "argument_name": "format",
+          "default_value": "str()"
+        }
+      }
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_camera_launch_py:66b370eb#0",
+    "la:file_examples_real_python_camera_launch_py:57082737#0",
+    "la:file_examples_real_python_camera_launch_py:818d293e#0",
+    "la:file_examples_real_python_camera_launch_py:bf20b20e#0",
+    "la:file_examples_real_python_camera_launch_py:21a0b97e#0",
+    "la:file_examples_real_python_camera_launch_py:33a2ef08#0",
+    "la:file_examples_real_python_camera_launch_py:0a627d89#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/camera.launch.py"
+    }
+  }
+}

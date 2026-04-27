@@ -39,11 +39,15 @@ suite: _NEWLINE _INDENT func_stmt+ _DEDENT
 func_stmt: assign_stmt
          | if_stmt
          | with_stmt
+         | list_append_stmt
          | expr_stmt
          | return_stmt
          | ignored_stmt
          | closing_paren
          | _NEWLINE
+
+list_append_stmt: NAME "." "append" "(" expr ")" _NEWLINE
+APPEND.2: "append"
 
 closing_paren: ")" _NEWLINE
              | ")" ")" _NEWLINE

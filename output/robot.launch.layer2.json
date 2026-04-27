@@ -1,0 +1,175 @@
+{
+  "id": "launch_desc_file_examples_real_python_robot_launch_py",
+  "launch_file_id": "file_examples_real_python_robot_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_robot_launch_py:c055eba9#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:c055eba9#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "name": "use_sim_time",
+      "default_value": {
+        "type": "argument_reference",
+        "argument_name": "use_sim_time",
+        "default_value": "false"
+      },
+      "description": "Use simulation (Gazebo) clock if true"
+    },
+    "la:file_examples_real_python_robot_launch_py:58d763a6#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:58d763a6#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "name": "usb_port",
+      "default_value": {
+        "type": "argument_reference",
+        "argument_name": "usb_port",
+        "default_value": "/dev/ttyACM0"
+      },
+      "description": "Connected USB port with OpenCR"
+    },
+    "la:file_examples_real_python_robot_launch_py:da4f1633#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:da4f1633#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "name": "tb3_param_dir",
+      "default_value": {
+        "type": "argument_reference",
+        "argument_name": "tb3_param_dir",
+        "default_value": "os.path.join(\"get_package_share_directory('turtlebot3_bringup')\", 'param', [{'type': 'var', 'name': 'TURTLEBOT3_MODEL'}])"
+      },
+      "description": "Full path to turtlebot3 parameter file to load"
+    },
+    "la:file_examples_real_python_robot_launch_py:e6581fd0#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:e6581fd0#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "name": "namespace",
+      "default_value": {
+        "type": "argument_reference",
+        "argument_name": "namespace",
+        "default_value": ""
+      },
+      "description": "Namespace for nodes"
+    },
+    "la:file_examples_real_python_robot_launch_py:a95aece0#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:a95aece0#0",
+      "action_type": "push_namespace",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "namespace": {
+        "type": "argument_reference",
+        "argument_name": "namespace",
+        "default_value": ""
+      },
+      "children": []
+    },
+    "la:file_examples_real_python_robot_launch_py:88c08210#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:88c08210#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file___ThisLaunchFileDir_______turtlebot3_state_publisher_launch_py__"
+    },
+    "la:file_examples_real_python_robot_launch_py:67b5c1be#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:67b5c1be#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file____type____launch_config____name____lidar_pkg_dir____default____os_path_join__get_package_share_directory___hls_lfcd_lds_driver________launch_________single_lidar_node_launch_py__"
+    },
+    "la:file_examples_real_python_robot_launch_py:72aa4c2a#0": {
+      "id": "la:file_examples_real_python_robot_launch_py:72aa4c2a#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "turtlebot3_node"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "turtlebot3_ros"
+      },
+      "parameters": {
+        "name": {
+          "type": "literal",
+          "value": "tb3_param_dir"
+        },
+        "default": {
+          "type": "literal",
+          "value": "os.path.join(\"get_package_share_directory('turtlebot3_bringup')\", 'param', [{'type': 'var', 'name': 'TURTLEBOT3_MODEL'}])"
+        },
+        "namespace": {
+          "type": "argument_reference",
+          "argument_name": "namespace",
+          "default_value": ""
+        }
+      },
+      "ros_arguments": [
+        "-i",
+        "$(arg usb_port=/dev/ttyACM0)"
+      ]
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_robot_launch_py:c055eba9#0",
+    "la:file_examples_real_python_robot_launch_py:58d763a6#0",
+    "la:file_examples_real_python_robot_launch_py:da4f1633#0",
+    "la:file_examples_real_python_robot_launch_py:e6581fd0#0",
+    "la:file_examples_real_python_robot_launch_py:a95aece0#0",
+    "la:file_examples_real_python_robot_launch_py:88c08210#0",
+    "la:file_examples_real_python_robot_launch_py:67b5c1be#0",
+    "la:file_examples_real_python_robot_launch_py:72aa4c2a#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/robot.launch.py"
+    }
+  }
+}

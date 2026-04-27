@@ -1,0 +1,44 @@
+{
+  "id": "launch_desc_file_examples_real_python_rviz2_launch_py",
+  "launch_file_id": "file_examples_real_python_rviz2_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_rviz2_launch_py:312cd675#0": {
+      "id": "la:file_examples_real_python_rviz2_launch_py:312cd675#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/rviz2.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "rviz2"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "rviz2"
+      },
+      "name": {
+        "type": "literal",
+        "value": "rviz2"
+      },
+      "ros_arguments": [
+        "-d",
+        "os.path.join(\"get_package_share_directory('turtlebot3_description')\", 'rviz', 'model.rviz')"
+      ]
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_rviz2_launch_py:312cd675#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/rviz2.launch.py"
+    }
+  }
+}

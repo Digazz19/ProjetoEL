@@ -1,0 +1,86 @@
+{
+  "id": "launch_desc_file_examples_real_python_topic_params_launch_py",
+  "launch_file_id": "file_examples_real_python_topic_params_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_topic_params_launch_py:3ae3f0a9#0": {
+      "id": "la:file_examples_real_python_topic_params_launch_py:3ae3f0a9#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/topic_params.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "custom_topic_cpp"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "pub"
+      },
+      "name": {
+        "type": "literal",
+        "value": "pub"
+      },
+      "remappings": [
+        {
+          "from": "/pub/examples/test_topic",
+          "to": {
+            "type": "literal",
+            "value": "/publisher_node/examples/test_topic"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_topic_params_launch_py:c70d5fc7#0": {
+      "id": "la:file_examples_real_python_topic_params_launch_py:c70d5fc7#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/topic_params.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "topic_pubsub_py"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "sub"
+      },
+      "name": {
+        "type": "literal",
+        "value": "sub"
+      }
+    },
+    "la:file_examples_real_python_topic_params_launch_py:7c7b5bcc#0": {
+      "id": "la:file_examples_real_python_topic_params_launch_py:7c7b5bcc#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/topic_params.launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file___os_path_join__get_package_share_directory___parameters_example_cpp________launch________launch_param_example_launch_py__"
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_topic_params_launch_py:3ae3f0a9#0",
+    "la:file_examples_real_python_topic_params_launch_py:c70d5fc7#0",
+    "la:file_examples_real_python_topic_params_launch_py:7c7b5bcc#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/topic_params.launch.py"
+    }
+  }
+}

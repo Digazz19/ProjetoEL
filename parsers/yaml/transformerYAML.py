@@ -1,49 +1,224 @@
-from models.architectureROS import ArchitectureROS, Node, Param, Remapping
+"""
+transformerYAML.py — Layer 2
+
+Transformer Lark para launch files YAML.
+Produz um LaunchDescription Layer 2 conforme a especificação HAROS.
+"""
+
 from lark import Transformer
+
+from models.layer2 import (
+    LaunchDescription,
+    LaunchSubstitution,
+    ElementProvenance,
+    SourceLocation,
+    ActionIDGenerator,
+    DeclareArgumentAction,
+    SetParameterAction,
+    NodeAction,
+    IncludeAction,
+    GroupAction,
+    Remapping,
+    ActionType,
+)
 
 
 class LaunchYAMLTransformer(Transformer):
 
+    def __init__(self, file_path: str = "unknown.launch.yaml"):
+        super().__init__()
+        self._file_path = file_path
+        self._file_id = ActionIDGenerator.file_id_from_path(file_path)
+        self._id_gen = ActionIDGenerator(self._file_id)
+
+    def _provenance(self, confidence: float = 1.0) -> ElementProvenance:
+        return ElementProvenance(
+            extraction_method="static_analysis",
+            source_location=SourceLocation(file=self._file_path),
+            confidence=confidence,
+        )
+
+    def _sub(self, value) -> LaunchSubstitution:
+        import re
+        if isinstance(value, LaunchSubstitution):
+            return value
+        if value is None:
+            return LaunchSubstitution.literal(None)
+        s = str(value)
+        # $(var name) ou $(arg name)
+        m = re.match(r'^\$\((var|arg)\s+(\S+)\)$', s)
+        if m:
+            return LaunchSubstitution.argument_reference(m.group(2))
+        # $(env NAME)
+        m = re.match(r'^\$\(env\s+(\S+)(?:\s+(.+))?\)$', s)
+        if m:
+            return LaunchSubstitution.environment_variable(m.group(1), m.group(2))
+        # $(find-pkg-share pkg)/path
+        m = re.match(r'^\$\(find-pkg-share\s+(\S+)\)/(.+)$', s)
+        if m:
+            return LaunchSubstitution.file_path(m.group(1), m.group(2))
+        return LaunchSubstitution.literal(s)
+
+    # -----------------------------------------------------------------------
+    # Regras principais
+    # -----------------------------------------------------------------------
+
     def start(self, items):
         for item in items:
-            if isinstance(item, ArchitectureROS):
+            if isinstance(item, LaunchDescription):
                 return item
-        return items[-1]
+        return items[-1] if items else None
 
     def launch(self, items):
-        arch = ArchitectureROS()
-
-        def process(item):
-            if isinstance(item, Node):
-                arch.add_node(item)
-            elif isinstance(item, dict):
-                t = item.get("type")
-                if t == "arg":
-                    arch.args[item["name"]] = item.get("default")
-                elif t == "let":
-                    arch.lets[item["name"]] = item.get("value")
-                elif t == "include":
-                    arch.includes.append(item["file"])
-                elif t == "set_env":
-                    arch.env[item["name"]] = item.get("value")
-                elif t == "unset_env":
-                    arch.unset_env.append(item["name"])
-                elif t == "executable":
-                    arch.executables.append(item)
-            elif isinstance(item, list):
-                for sub in item:
-                    process(sub)
-
+        ld_id = f"launch_desc_{self._file_id}"
+        ld = LaunchDescription(
+            id=ld_id,
+            launch_file_id=self._file_id,
+            format="yaml",
+            provenance=ElementProvenance(
+                extraction_method="static_analysis",
+                source_location=SourceLocation(file=self._file_path),
+                confidence=0.95,
+            ),
+        )
         for item in items:
-            process(item)
+            self._process_item(ld, item)
+        return ld
 
-        # Resolver namespaces e construir grafo de tópicos após parsing completo
-        arch.resolve()
-        return arch
+    def _process_item(self, ld, item, conditions=None):
+        if item is None:
+            return
+        if isinstance(item, list):
+            for sub in item:
+                self._process_item(ld, sub, conditions)
+            return
+        if not isinstance(item, dict):
+            return
+        t = item.get("type")
+
+        if t == "node":
+            ld.add_action(self._make_node_action(item, conditions))
+
+        elif t == "arg":
+            ld.add_action(DeclareArgumentAction(
+                id=self._id_gen.generate(f"arg_{item.get('name','')}"),
+                action_type=ActionType.DECLARE_ARGUMENT,
+                name=item.get("name", ""),
+                default_value=self._sub(item.get("default")) if item.get("default") is not None else None,
+                description=item.get("description"),
+                provenance=self._provenance(),
+            ))
+
+        elif t == "let":
+            ld.add_action(SetParameterAction(
+                id=self._id_gen.generate(f"let_{item.get('name','')}"),
+                action_type=ActionType.SET_PARAMETER,
+                name=item.get("name", ""),
+                value=self._sub(item.get("value")),
+                target_scope="local",
+                provenance=self._provenance(),
+            ))
+
+        elif t == "set_env":
+            ld.add_action(SetParameterAction(
+                id=self._id_gen.generate(f"set_env_{item.get('name','')}"),
+                action_type=ActionType.SET_PARAMETER,
+                name=item.get("name", ""),
+                value=self._sub(item.get("value")),
+                target_scope="global",
+                provenance=self._provenance(),
+            ))
+
+        elif t == "include":
+            included_id = ActionIDGenerator.file_id_from_path(item.get("file") or "unknown")
+            arg_mappings = {
+                arg["name"]: self._sub(arg.get("value") or arg.get("default"))
+                for arg in item.get("args", [])
+                if isinstance(arg, dict) and arg.get("name")
+            }
+            ld.add_action(IncludeAction(
+                id=self._id_gen.generate(f"include_{included_id}"),
+                action_type=ActionType.INCLUDE,
+                included_launch_id=f"launch_desc_{included_id}",
+                argument_mappings=arg_mappings,
+                conditions=conditions or [],
+                provenance=self._provenance(),
+            ))
+
+        elif t == "group":
+            group_id = self._id_gen.generate("group")
+            group = GroupAction(
+                id=group_id,
+                action_type=ActionType.GROUP,
+                namespace=self._sub(item.get("namespace")) if item.get("namespace") else None,
+                conditions=conditions or [],
+                provenance=self._provenance(),
+            )
+            ld.add_action(group)
+            child_ids = []
+            for child in item.get("children", []):
+                prev_seq = list(ld.launch_sequence)
+                self._process_item(ld, child, conditions)
+                new_ids = [aid for aid in ld.launch_sequence if aid not in prev_seq]
+                child_ids.extend(new_ids)
+                for aid in new_ids:
+                    ld.launch_sequence.remove(aid)
+            group.children = child_ids
+
+    def _make_node_action(self, item, conditions=None):
+        pkg = item.get("pkg")
+        exe = item.get("exec")
+        name = item.get("name")
+        ns = item.get("namespace")
+
+        # Parâmetros
+        params = {}
+        for p in item.get("params", []):
+            if hasattr(p, 'name'):
+                params[p.name] = self._sub(str(p.value))
+            elif isinstance(p, dict):
+                params[p["name"]] = self._sub(p.get("value"))
+
+        # Remaps
+        remaps = []
+        for r in item.get("remaps", []):
+            if isinstance(r, tuple) and len(r) == 2:
+                remaps.append(Remapping(
+                    from_topic=str(r[0]),
+                    to_topic=self._sub(str(r[1])),
+                ))
+            elif isinstance(r, dict):
+                remaps.append(Remapping(
+                    from_topic=r.get("from", ""),
+                    to_topic=self._sub(r.get("to", "")),
+                ))
+
+        cond_list = list(conditions or [])
+        if item.get("if"):
+            cond_list.append(["eq", ["launch_arg_get", item["if"]], "true"])
+        if item.get("unless"):
+            cond_list.append(["not", ["eq", ["launch_arg_get", item["unless"]], "true"]])
+
+        return NodeAction(
+            id=self._id_gen.generate(f"Node(pkg={pkg},exec={exe},name={name})"),
+            action_type=ActionType.NODE,
+            package=self._sub(pkg),
+            executable=self._sub(exe),
+            name=self._sub(name) if name else None,
+            namespace=self._sub(ns) if ns else None,
+            parameters=params,
+            remappings=remaps,
+            conditions=cond_list,
+            provenance=self._provenance(),
+        )
+
+    # -----------------------------------------------------------------------
+    # Regras de gramática (mesma estrutura do transformer antigo)
+    # -----------------------------------------------------------------------
 
     def element(self, items):
         for item in items:
-            if isinstance(item, (dict, Node, list)):
+            if isinstance(item, (dict, list)):
                 return item
 
     def node_content(self, items):
@@ -67,15 +242,23 @@ class LaunchYAMLTransformer(Transformer):
         params = []
         for item in items:
             if isinstance(item, dict):
-                if item["type"] == "remap":
-                    # Agora produz lista de Remapping em vez de tuplos
+                if item.get("type") == "remap":
                     remaps.extend(item["data"])
-                elif item["type"] == "param":
+                elif item.get("type") == "param":
                     params.extend(item["data"])
             elif isinstance(item, tuple):
                 attrs[item[0]] = item[1]
-
-        return self._build_node(attrs, remaps, params)
+        return {
+            "type": "node",
+            "pkg": attrs.get("pkg"),
+            "exec": attrs.get("exec"),
+            "name": attrs.get("name"),
+            "namespace": attrs.get("namespace"),
+            "if": attrs.get("if"),
+            "unless": attrs.get("unless"),
+            "params": params,
+            "remaps": remaps,
+        }
 
     def include(self, items):
         attrs = {}
@@ -85,18 +268,18 @@ class LaunchYAMLTransformer(Transformer):
                 args.extend(item["data"])
             elif isinstance(item, tuple):
                 attrs[item[0]] = item[1]
-
         return {"type": "include", "file": attrs.get("file"), "args": args}
 
     def group(self, items):
-        return [i for i in items if isinstance(i, (dict, Node, list))]
+        children = [i for i in items if isinstance(i, (dict, list))]
+        return {"type": "group", "children": children}
 
     def arg(self, items):
         attrs = dict([i for i in items if isinstance(i, tuple)])
         return {
             "type": "arg",
             "name": attrs.get("name"),
-            "default": attrs.get("default", attrs.get("value"))
+            "default": attrs.get("default", attrs.get("value")),
         }
 
     def let(self, items):
@@ -119,45 +302,30 @@ class LaunchYAMLTransformer(Transformer):
                 envs.extend(item["data"])
             elif isinstance(item, tuple):
                 attrs[item[0]] = item[1]
-
-        return {
-            "type": "executable",
-            "cmd": attrs.get("cmd"),
-            "cwd": attrs.get("cwd"),
-            "env": envs
-        }
+        return {"type": "executable", "cmd": attrs.get("cmd"), "cwd": attrs.get("cwd"), "env": envs}
 
     def param(self, items):
         valid = [i for i in items if isinstance(i, list)]
-        params = [Param(dict(i).get("name"), dict(i).get("value")) for i in valid]
+        from models.layer2 import LaunchSubstitution
+        params = [
+            {"name": dict(i).get("name"), "value": dict(i).get("value")}
+            for i in valid
+        ]
         return {"type": "param", "data": params}
 
     def remap(self, items):
-        """Produz objetos Remapping tipados em vez de tuplos anónimos."""
         valid = [i for i in items if isinstance(i, list)]
-        remappings = [
-            Remapping(
-                src=dict(i).get("from"),
-                dst=dict(i).get("to")
-            )
-            for i in valid
-        ]
-        return {"type": "remap", "data": remappings}
+        remaps = [(dict(i).get("from"), dict(i).get("to")) for i in valid]
+        return {"type": "remap", "data": remaps}
 
     def env(self, items):
         valid = [i for i in items if isinstance(i, list)]
-        envs = [
-            {"type": "env", "name": dict(i).get("name"), "value": dict(i).get("value")}
-            for i in valid
-        ]
+        envs = [{"name": dict(i).get("name"), "value": dict(i).get("value")} for i in valid]
         return {"type": "env", "data": envs}
 
     def args(self, items):
         valid = [i for i in items if isinstance(i, list)]
-        args = [
-            {"type": "arg", "name": dict(i).get("name"), "value": dict(i).get("value")}
-            for i in valid
-        ]
+        args = [{"type": "arg", "name": dict(i).get("name"), "value": dict(i).get("value")} for i in valid]
         return {"type": "args", "data": args}
 
     def dict_item(self, items):
@@ -170,14 +338,3 @@ class LaunchYAMLTransformer(Transformer):
            (value.startswith("'") and value.endswith("'")):
             value = value[1:-1]
         return (key, value)
-
-    def _build_node(self, attrs, remaps, params):
-        return Node(
-            name=attrs.get("name"),
-            package=attrs.get("pkg"),
-            exec=attrs.get("exec"),
-            namespace=attrs.get("namespace"),
-            remappings=remaps,   # agora lista de Remapping
-            params=params,
-            args=attrs.get("args", attrs.get("ros_args"))
-        )

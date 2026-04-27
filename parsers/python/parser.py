@@ -1,8 +1,16 @@
+"""
+parsers/python/parser.py — Layer 2
+
+Parser para launch files Python.
+Usa a gramática Lark e o LaunchPythonTransformer para produzir um LaunchDescription Layer 2.
+"""
+
 from lark import Lark
 from lark.indenter import PythonIndenter
 
 from .grammar import grammarPython
 from .transformerPython import LaunchPythonTransformer
+
 
 class PythonLaunchParser:
     def __init__(self):
@@ -17,14 +25,13 @@ class PythonLaunchParser:
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
 
-        # Normalizar line endings (CRLF -> LF) para evitar problemas com
-        # ficheiros criados no Windows
+        # Normalizar line endings (CRLF -> LF)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
 
         if not text.endswith("\n"):
             text += "\n"
 
         tree = self.parser.parse(text)
-        transformer = LaunchPythonTransformer()
-        architecture = transformer.transform(tree)
-        return tree, architecture
+        transformer = LaunchPythonTransformer(file_path)
+        launch_description = transformer.transform(tree)
+        return tree, launch_description

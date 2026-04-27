@@ -1,0 +1,14 @@
+{
+  "id": "launch_desc_file_examples_real_python_opaque_multi_nodes_inplace_launch_py",
+  "launch_file_id": "file_examples_real_python_opaque_multi_nodes_inplace_launch_py",
+  "format": "python",
+  "actions": {},
+  "launch_sequence": [],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/opaque_multi_nodes_inplace.launch.py"
+    }
+  }
+}

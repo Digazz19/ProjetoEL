@@ -1,0 +1,1252 @@
+{
+  "id": "launch_desc_file_examples_real_python_navigation_launch_py",
+  "launch_file_id": "file_examples_real_python_navigation_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_navigation_launch_py:a8c860d7#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:a8c860d7#0",
+      "action_type": "set_parameter",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "RCUTILS_LOGGING_BUFFERED_STREAM",
+      "value": {
+        "type": "literal",
+        "value": "1"
+      },
+      "target_scope": "global"
+    },
+    "la:file_examples_real_python_navigation_launch_py:e6581fd0#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:e6581fd0#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "namespace",
+      "default_value": {
+        "type": "literal",
+        "value": ""
+      },
+      "description": "Top-level namespace"
+    },
+    "la:file_examples_real_python_navigation_launch_py:c055eba9#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:c055eba9#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_sim_time",
+      "default_value": {
+        "type": "literal",
+        "value": "false"
+      },
+      "description": "Use simulation (Gazebo) clock if true"
+    },
+    "la:file_examples_real_python_navigation_launch_py:2ed69e39#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:2ed69e39#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "params_file",
+      "default_value": {
+        "type": "literal",
+        "value": "os.path.join({'type': 'var', 'name': 'bringup_dir'}, 'params', 'nav2_params.yaml')"
+      },
+      "description": "Full path to the ROS2 parameters file to use for all launched nodes"
+    },
+    "la:file_examples_real_python_navigation_launch_py:3c8b8126#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:3c8b8126#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "autostart",
+      "default_value": {
+        "type": "literal",
+        "value": "true"
+      },
+      "description": "Automatically startup the nav2 stack"
+    },
+    "la:file_examples_real_python_navigation_launch_py:fa71ac7c#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:fa71ac7c#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "graph",
+      "default_value": {
+        "type": "literal",
+        "value": ""
+      },
+      "description": "Path to the graph file to load"
+    },
+    "la:file_examples_real_python_navigation_launch_py:e923ea71#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:e923ea71#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_composition",
+      "default_value": {
+        "type": "literal",
+        "value": "False"
+      },
+      "description": "Use composed bringup if True"
+    },
+    "la:file_examples_real_python_navigation_launch_py:890c5a3e#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:890c5a3e#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_intra_process_comms",
+      "default_value": {
+        "type": "literal",
+        "value": "False"
+      },
+      "description": "Whether to use intra process communication"
+    },
+    "la:file_examples_real_python_navigation_launch_py:646dc7dd#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:646dc7dd#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "container_name",
+      "default_value": {
+        "type": "literal",
+        "value": "nav2_container"
+      },
+      "description": "the name of container that nodes will load in if use composition"
+    },
+    "la:file_examples_real_python_navigation_launch_py:5f8dceda#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:5f8dceda#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_respawn",
+      "default_value": {
+        "type": "literal",
+        "value": "False"
+      },
+      "description": "Whether to respawn if a node crashes. Applied when composition is disabled."
+    },
+    "la:file_examples_real_python_navigation_launch_py:6d6bd985#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:6d6bd985#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "log_level",
+      "default_value": {
+        "type": "literal",
+        "value": "info"
+      },
+      "description": "log level"
+    },
+    "la:file_examples_real_python_navigation_launch_py:a88f0a15#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:a88f0a15#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_keepout_zones",
+      "default_value": {
+        "type": "literal",
+        "value": "True"
+      },
+      "description": "Whether to enable keepout zones or not"
+    },
+    "la:file_examples_real_python_navigation_launch_py:8f63eb14#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:8f63eb14#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_speed_zones",
+      "default_value": {
+        "type": "literal",
+        "value": "True"
+      },
+      "description": "Whether to enable speed zones or not"
+    },
+    "la:file_examples_real_python_navigation_launch_py:bc727501#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:bc727501#0",
+      "action_type": "group",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 0.9,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "children": [
+        "la:file_examples_real_python_navigation_launch_py:39752fd4#0",
+        "la:file_examples_real_python_navigation_launch_py:45841de3#0",
+        "la:file_examples_real_python_navigation_launch_py:755c4767#0",
+        "la:file_examples_real_python_navigation_launch_py:27583725#0",
+        "la:file_examples_real_python_navigation_launch_py:a6eb0e12#0",
+        "la:file_examples_real_python_navigation_launch_py:0319c195#0",
+        "la:file_examples_real_python_navigation_launch_py:8a93a3ec#0",
+        "la:file_examples_real_python_navigation_launch_py:6a457341#0",
+        "la:file_examples_real_python_navigation_launch_py:546dfbf1#0",
+        "la:file_examples_real_python_navigation_launch_py:9eff228d#0",
+        "la:file_examples_real_python_navigation_launch_py:0a5e1efd#0",
+        "la:file_examples_real_python_navigation_launch_py:d58c6630#0"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:39752fd4#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:39752fd4#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_controller"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "controller_server"
+      },
+      "remappings": [
+        {
+          "from": "cmd_vel",
+          "to": {
+            "type": "literal",
+            "value": "cmd_vel_nav"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:45841de3#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:45841de3#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_smoother"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "smoother_server"
+      },
+      "name": {
+        "type": "literal",
+        "value": "smoother_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:755c4767#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:755c4767#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_planner"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "planner_server"
+      },
+      "name": {
+        "type": "literal",
+        "value": "planner_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:27583725#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:27583725#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_route"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "route_server"
+      },
+      "name": {
+        "type": "literal",
+        "value": "route_server"
+      },
+      "parameters": {
+        "graph_filepath": {
+          "type": "argument_reference",
+          "argument_name": "graph"
+        }
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:a6eb0e12#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:a6eb0e12#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_behaviors"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "behavior_server"
+      },
+      "name": {
+        "type": "literal",
+        "value": "behavior_server"
+      },
+      "remappings": [
+        {
+          "from": "cmd_vel",
+          "to": {
+            "type": "literal",
+            "value": "cmd_vel_nav"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:0319c195#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:0319c195#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_bt_navigator"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "bt_navigator"
+      },
+      "name": {
+        "type": "literal",
+        "value": "bt_navigator"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:8a93a3ec#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:8a93a3ec#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_waypoint_follower"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "waypoint_follower"
+      },
+      "name": {
+        "type": "literal",
+        "value": "waypoint_follower"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:6a457341#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:6a457341#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_velocity_smoother"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "velocity_smoother"
+      },
+      "name": {
+        "type": "literal",
+        "value": "velocity_smoother"
+      },
+      "remappings": [
+        {
+          "from": "cmd_vel",
+          "to": {
+            "type": "literal",
+            "value": "cmd_vel_nav"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:546dfbf1#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:546dfbf1#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_collision_monitor"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "collision_monitor"
+      },
+      "name": {
+        "type": "literal",
+        "value": "collision_monitor"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:9eff228d#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:9eff228d#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "opennav_docking"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "opennav_docking"
+      },
+      "name": {
+        "type": "literal",
+        "value": "docking_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:0a5e1efd#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:0a5e1efd#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "opennav_following"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "opennav_following"
+      },
+      "name": {
+        "type": "literal",
+        "value": "following_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:d58c6630#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:d58c6630#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_lifecycle_manager"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "lifecycle_manager"
+      },
+      "name": {
+        "type": "literal",
+        "value": "lifecycle_manager_navigation"
+      },
+      "parameters": {
+        "autostart": {
+          "type": "literal",
+          "value": "LaunchConfigAsBool('autostart')"
+        },
+        "node_names": {
+          "type": "literal",
+          "value": "['controller_server', 'smoother_server', 'planner_server', 'route_server', 'behavior_server', 'velocity_smoother', 'collision_monitor', 'bt_navigator', 'waypoint_follower', 'docking_server', 'following_server']"
+        }
+      },
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:bc727501#1": {
+      "id": "la:file_examples_real_python_navigation_launch_py:bc727501#1",
+      "action_type": "group",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 0.9,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "children": [
+        "la:file_examples_real_python_navigation_launch_py:f953b15d#0",
+        "la:file_examples_real_python_navigation_launch_py:0f2580b9#0",
+        "la:file_examples_real_python_navigation_launch_py:68bb5708#0",
+        "la:file_examples_real_python_navigation_launch_py:661f413d#0",
+        "la:file_examples_real_python_navigation_launch_py:9b6a777c#0",
+        "la:file_examples_real_python_navigation_launch_py:39c8491b#0",
+        "la:file_examples_real_python_navigation_launch_py:983f54c1#0",
+        "la:file_examples_real_python_navigation_launch_py:a4e4dafa#0",
+        "la:file_examples_real_python_navigation_launch_py:621bf78e#0",
+        "la:file_examples_real_python_navigation_launch_py:56a05db1#0",
+        "la:file_examples_real_python_navigation_launch_py:9e6cc62e#0",
+        "la:file_examples_real_python_navigation_launch_py:4e0c9132#0"
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:f953b15d#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:f953b15d#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_controller"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_controller::ControllerServer"
+      },
+      "name": {
+        "type": "literal",
+        "value": "controller_server"
+      },
+      "remappings": [
+        {
+          "from": "cmd_vel",
+          "to": {
+            "type": "literal",
+            "value": "cmd_vel_nav"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:0f2580b9#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:0f2580b9#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_smoother"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_smoother::SmootherServer"
+      },
+      "name": {
+        "type": "literal",
+        "value": "smoother_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:68bb5708#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:68bb5708#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_planner"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_planner::PlannerServer"
+      },
+      "name": {
+        "type": "literal",
+        "value": "planner_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:661f413d#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:661f413d#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_route"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_route::RouteServer"
+      },
+      "name": {
+        "type": "literal",
+        "value": "route_server"
+      },
+      "parameters": {
+        "graph_filepath": {
+          "type": "argument_reference",
+          "argument_name": "graph"
+        }
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:9b6a777c#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:9b6a777c#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_behaviors"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "behavior_server::BehaviorServer"
+      },
+      "name": {
+        "type": "literal",
+        "value": "behavior_server"
+      },
+      "remappings": [
+        {
+          "from": "cmd_vel",
+          "to": {
+            "type": "literal",
+            "value": "cmd_vel_nav"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:39c8491b#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:39c8491b#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_bt_navigator"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_bt_navigator::BtNavigator"
+      },
+      "name": {
+        "type": "literal",
+        "value": "bt_navigator"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:983f54c1#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:983f54c1#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_waypoint_follower"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_waypoint_follower::WaypointFollower"
+      },
+      "name": {
+        "type": "literal",
+        "value": "waypoint_follower"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:a4e4dafa#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:a4e4dafa#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_velocity_smoother"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_velocity_smoother::VelocitySmoother"
+      },
+      "name": {
+        "type": "literal",
+        "value": "velocity_smoother"
+      },
+      "remappings": [
+        {
+          "from": "cmd_vel",
+          "to": {
+            "type": "literal",
+            "value": "cmd_vel_nav"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:621bf78e#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:621bf78e#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_collision_monitor"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_collision_monitor::CollisionMonitor"
+      },
+      "name": {
+        "type": "literal",
+        "value": "collision_monitor"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:56a05db1#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:56a05db1#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "opennav_docking"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "opennav_docking::DockingServer"
+      },
+      "name": {
+        "type": "literal",
+        "value": "docking_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:9e6cc62e#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:9e6cc62e#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "opennav_following"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "opennav_following::FollowingServer"
+      },
+      "name": {
+        "type": "literal",
+        "value": "following_server"
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_navigation_launch_py:4e0c9132#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:4e0c9132#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "nav2_lifecycle_manager"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "nav2_lifecycle_manager::LifecycleManager"
+      },
+      "name": {
+        "type": "literal",
+        "value": "lifecycle_manager_navigation"
+      },
+      "parameters": {
+        "autostart": {
+          "type": "literal",
+          "value": "LaunchConfigAsBool('autostart')"
+        },
+        "node_names": {
+          "type": "literal",
+          "value": "['controller_server', 'smoother_server', 'planner_server', 'route_server', 'behavior_server', 'velocity_smoother', 'collision_monitor', 'bt_navigator', 'waypoint_follower', 'docking_server', 'following_server']"
+        }
+      }
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_navigation_launch_py:a8c860d7#0",
+    "la:file_examples_real_python_navigation_launch_py:e6581fd0#0",
+    "la:file_examples_real_python_navigation_launch_py:c055eba9#0",
+    "la:file_examples_real_python_navigation_launch_py:2ed69e39#0",
+    "la:file_examples_real_python_navigation_launch_py:3c8b8126#0",
+    "la:file_examples_real_python_navigation_launch_py:fa71ac7c#0",
+    "la:file_examples_real_python_navigation_launch_py:e923ea71#0",
+    "la:file_examples_real_python_navigation_launch_py:890c5a3e#0",
+    "la:file_examples_real_python_navigation_launch_py:646dc7dd#0",
+    "la:file_examples_real_python_navigation_launch_py:5f8dceda#0",
+    "la:file_examples_real_python_navigation_launch_py:6d6bd985#0",
+    "la:file_examples_real_python_navigation_launch_py:a88f0a15#0",
+    "la:file_examples_real_python_navigation_launch_py:8f63eb14#0",
+    "la:file_examples_real_python_navigation_launch_py:bc727501#0",
+    "la:file_examples_real_python_navigation_launch_py:bc727501#1"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/navigation_launch.py"
+    }
+  }
+}

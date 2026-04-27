@@ -1,0 +1,474 @@
+{
+  "id": "launch_desc_file_examples_real_python_bringup_launch_py",
+  "launch_file_id": "file_examples_real_python_bringup_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_bringup_launch_py:a8c860d7#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:a8c860d7#0",
+      "action_type": "set_parameter",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "RCUTILS_LOGGING_BUFFERED_STREAM",
+      "value": {
+        "type": "literal",
+        "value": "1"
+      },
+      "target_scope": "global"
+    },
+    "la:file_examples_real_python_bringup_launch_py:e6581fd0#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:e6581fd0#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "namespace",
+      "default_value": {
+        "type": "literal",
+        "value": ""
+      },
+      "description": "Top-level namespace"
+    },
+    "la:file_examples_real_python_bringup_launch_py:3675b6b8#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:3675b6b8#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "slam",
+      "default_value": {
+        "type": "literal",
+        "value": "False"
+      },
+      "description": "Whether run a SLAM"
+    },
+    "la:file_examples_real_python_bringup_launch_py:c9b30450#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:c9b30450#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "map",
+      "default_value": {
+        "type": "literal",
+        "value": ""
+      },
+      "description": "Full path to map yaml file to load"
+    },
+    "la:file_examples_real_python_bringup_launch_py:a3bc2431#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:a3bc2431#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "keepout_mask",
+      "default_value": {
+        "type": "literal",
+        "value": ""
+      },
+      "description": "Full path to keepout mask yaml file to load"
+    },
+    "la:file_examples_real_python_bringup_launch_py:188b98bb#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:188b98bb#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "speed_mask",
+      "default_value": {
+        "type": "literal",
+        "value": ""
+      },
+      "description": "Full path to speed mask yaml file to load"
+    },
+    "la:file_examples_real_python_bringup_launch_py:fa71ac7c#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:fa71ac7c#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "graph",
+      "default_value": {
+        "type": "literal",
+        "value": ""
+      },
+      "description": "Path to the graph file to load"
+    },
+    "la:file_examples_real_python_bringup_launch_py:c055eba9#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:c055eba9#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "use_sim_time",
+      "default_value": {
+        "type": "literal",
+        "value": "false"
+      },
+      "description": "Use simulation (Gazebo) clock if true"
+    },
+    "la:file_examples_real_python_bringup_launch_py:2ed69e39#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:2ed69e39#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "params_file",
+      "default_value": {
+        "type": "literal",
+        "value": "os.path.join({'type': 'var', 'name': 'bringup_dir'}, 'params', 'nav2_params.yaml')"
+      },
+      "description": "Full path to the ROS2 parameters file to use for all launched nodes"
+    },
+    "la:file_examples_real_python_bringup_launch_py:3c8b8126#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:3c8b8126#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "autostart",
+      "default_value": {
+        "type": "literal",
+        "value": "true"
+      },
+      "description": "Automatically startup the nav2 stack"
+    },
+    "la:file_examples_real_python_bringup_launch_py:e923ea71#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:e923ea71#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "use_composition",
+      "default_value": {
+        "type": "literal",
+        "value": "True"
+      },
+      "description": "Whether to use composed bringup"
+    },
+    "la:file_examples_real_python_bringup_launch_py:890c5a3e#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:890c5a3e#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "use_intra_process_comms",
+      "default_value": {
+        "type": "literal",
+        "value": "False"
+      },
+      "description": "Whether to use intra process communications"
+    },
+    "la:file_examples_real_python_bringup_launch_py:646dc7dd#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:646dc7dd#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "container_name",
+      "default_value": {
+        "type": "literal",
+        "value": "nav2_container"
+      },
+      "description": "the name of container that nodes will load in if use composition"
+    },
+    "la:file_examples_real_python_bringup_launch_py:5f8dceda#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:5f8dceda#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "use_respawn",
+      "default_value": {
+        "type": "literal",
+        "value": "False"
+      },
+      "description": "Whether to respawn if a node crashes. Applied when composition is disabled."
+    },
+    "la:file_examples_real_python_bringup_launch_py:6d6bd985#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:6d6bd985#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "log_level",
+      "default_value": {
+        "type": "literal",
+        "value": "info"
+      },
+      "description": "log level"
+    },
+    "la:file_examples_real_python_bringup_launch_py:bf7d08c7#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:bf7d08c7#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "use_localization",
+      "default_value": {
+        "type": "literal",
+        "value": "True"
+      },
+      "description": "Whether to enable localization or not"
+    },
+    "la:file_examples_real_python_bringup_launch_py:a88f0a15#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:a88f0a15#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "use_keepout_zones",
+      "default_value": {
+        "type": "literal",
+        "value": "True"
+      },
+      "description": "Whether to enable keepout zones or not"
+    },
+    "la:file_examples_real_python_bringup_launch_py:8f63eb14#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:8f63eb14#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "name": "use_speed_zones",
+      "default_value": {
+        "type": "literal",
+        "value": "True"
+      },
+      "description": "Whether to enable speed zones or not"
+    },
+    "la:file_examples_real_python_bringup_launch_py:bc727501#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:bc727501#0",
+      "action_type": "group",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 0.9,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "children": [
+        "la:file_examples_real_python_bringup_launch_py:333949b4#0",
+        "la:file_examples_real_python_bringup_launch_py:104c97fa#0",
+        "la:file_examples_real_python_bringup_launch_py:7f6556ec#0",
+        "la:file_examples_real_python_bringup_launch_py:4e327229#0",
+        "la:file_examples_real_python_bringup_launch_py:1d6bbfa7#0",
+        "la:file_examples_real_python_bringup_launch_py:d4ed25df#0"
+      ]
+    },
+    "la:file_examples_real_python_bringup_launch_py:333949b4#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:333949b4#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "rclcpp_components"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "component_container_isolated"
+      },
+      "name": {
+        "type": "argument_reference",
+        "argument_name": "container_name"
+      },
+      "namespace": {
+        "type": "argument_reference",
+        "argument_name": "namespace"
+      },
+      "parameters": {
+        "autostart": {
+          "type": "literal",
+          "value": "LaunchConfigAsBool('autostart')"
+        }
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ],
+      "ros_arguments": [
+        "--ros-args",
+        "--log-level",
+        "$(arg log_level)"
+      ]
+    },
+    "la:file_examples_real_python_bringup_launch_py:104c97fa#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:104c97fa#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file_os_path_join___type____var____name____launch_dir_____slam_launch_py__"
+    },
+    "la:file_examples_real_python_bringup_launch_py:7f6556ec#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:7f6556ec#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file_os_path_join___type____var____name____launch_dir_____localization_launch_py__"
+    },
+    "la:file_examples_real_python_bringup_launch_py:4e327229#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:4e327229#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file_os_path_join___type____var____name____launch_dir_____keepout_zone_launch_py__"
+    },
+    "la:file_examples_real_python_bringup_launch_py:1d6bbfa7#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:1d6bbfa7#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file_os_path_join___type____var____name____launch_dir_____speed_zone_launch_py__"
+    },
+    "la:file_examples_real_python_bringup_launch_py:d4ed25df#0": {
+      "id": "la:file_examples_real_python_bringup_launch_py:d4ed25df#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/bringup_launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file_os_path_join___type____var____name____launch_dir_____navigation_launch_py__"
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_bringup_launch_py:a8c860d7#0",
+    "la:file_examples_real_python_bringup_launch_py:e6581fd0#0",
+    "la:file_examples_real_python_bringup_launch_py:3675b6b8#0",
+    "la:file_examples_real_python_bringup_launch_py:c9b30450#0",
+    "la:file_examples_real_python_bringup_launch_py:a3bc2431#0",
+    "la:file_examples_real_python_bringup_launch_py:188b98bb#0",
+    "la:file_examples_real_python_bringup_launch_py:fa71ac7c#0",
+    "la:file_examples_real_python_bringup_launch_py:c055eba9#0",
+    "la:file_examples_real_python_bringup_launch_py:2ed69e39#0",
+    "la:file_examples_real_python_bringup_launch_py:3c8b8126#0",
+    "la:file_examples_real_python_bringup_launch_py:e923ea71#0",
+    "la:file_examples_real_python_bringup_launch_py:890c5a3e#0",
+    "la:file_examples_real_python_bringup_launch_py:646dc7dd#0",
+    "la:file_examples_real_python_bringup_launch_py:5f8dceda#0",
+    "la:file_examples_real_python_bringup_launch_py:6d6bd985#0",
+    "la:file_examples_real_python_bringup_launch_py:bf7d08c7#0",
+    "la:file_examples_real_python_bringup_launch_py:a88f0a15#0",
+    "la:file_examples_real_python_bringup_launch_py:8f63eb14#0",
+    "la:file_examples_real_python_bringup_launch_py:bc727501#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/bringup_launch.py"
+    }
+  }
+}

@@ -1,0 +1,385 @@
+{
+  "id": "launch_desc_file_examples_real_python_spawn_robot_launch_py",
+  "launch_file_id": "file_examples_real_python_spawn_robot_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_spawn_robot_launch_py:50c0b4d2#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:50c0b4d2#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "name": "world",
+      "default_value": {
+        "type": "literal",
+        "value": "home.sdf"
+      },
+      "description": "Name of the Gazebo world file to load"
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:57a4eed6#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:57a4eed6#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "name": "model",
+      "default_value": {
+        "type": "literal",
+        "value": "mogi_bot.urdf"
+      },
+      "description": "Name of the URDF description to load"
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:8e882987#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:8e882987#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "name": "x",
+      "default_value": {
+        "type": "literal",
+        "value": "2.5"
+      },
+      "description": "x coordinate of spawned robot"
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:7174f267#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:7174f267#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "name": "y",
+      "default_value": {
+        "type": "literal",
+        "value": "1.5"
+      },
+      "description": "y coordinate of spawned robot"
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:73181093#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:73181093#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "name": "yaw",
+      "default_value": {
+        "type": "literal",
+        "value": "-1.5707"
+      },
+      "description": "yaw angle of spawned robot"
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:c055eba9#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:c055eba9#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "name": "use_sim_time",
+      "default_value": {
+        "type": "literal",
+        "value": "True"
+      },
+      "description": "Flag to enable use_sim_time"
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:8e31550a#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:8e31550a#0",
+      "action_type": "include",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "included_launch_id": "launch_desc_file_os_path_join___type____var____name____pkg_bme_ros2_navigation_____launch____world_launch_py__"
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:c58550db#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:c58550db#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "ros_gz_sim"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "create"
+      },
+      "parameters": {
+        "use_sim_time": {
+          "type": "argument_reference",
+          "argument_name": "use_sim_time"
+        }
+      },
+      "ros_arguments": [
+        "-name",
+        "mogi_bot",
+        "-topic",
+        "robot_description",
+        "-x",
+        "$(arg x)",
+        "-y",
+        "$(arg y)",
+        "-z",
+        "0.5",
+        "-Y",
+        "$(arg yaw)"
+      ]
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:c15eb23e#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:c15eb23e#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "ros_gz_bridge"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "parameter_bridge"
+      },
+      "parameters": {
+        "use_sim_time": {
+          "type": "argument_reference",
+          "argument_name": "use_sim_time"
+        }
+      },
+      "ros_arguments": [
+        "--ros-args",
+        "-p",
+        "'config_file:={gz_bridge_params_path}"
+      ]
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:f5455c33#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:f5455c33#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "ros_gz_image"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "image_bridge"
+      },
+      "parameters": {
+        "use_sim_time": {
+          "type": "argument_reference",
+          "argument_name": "use_sim_time"
+        },
+        "camera.image.compressed.jpeg_quality": {
+          "type": "literal",
+          "value": 75
+        }
+      },
+      "ros_arguments": [
+        "/camera/image"
+      ]
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:baff606b#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:baff606b#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "topic_tools"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "relay"
+      },
+      "name": {
+        "type": "literal",
+        "value": "relay_camera_info"
+      },
+      "parameters": {
+        "use_sim_time": {
+          "type": "argument_reference",
+          "argument_name": "use_sim_time"
+        }
+      },
+      "ros_arguments": [
+        "camera/camera_info",
+        "camera/image/camera_info"
+      ]
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:63bdcd07#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:63bdcd07#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "robot_state_publisher"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "robot_state_publisher"
+      },
+      "name": {
+        "type": "literal",
+        "value": "robot_state_publisher"
+      },
+      "parameters": {
+        "robot_description": {
+          "type": "literal",
+          "value": "Command(['xacro', ' ', {'type': 'var', 'name': 'urdf_file_path'}])"
+        },
+        "use_sim_time": {
+          "type": "argument_reference",
+          "argument_name": "use_sim_time"
+        }
+      },
+      "remappings": [
+        {
+          "from": "/tf",
+          "to": {
+            "type": "literal",
+            "value": "tf"
+          }
+        },
+        {
+          "from": "/tf_static",
+          "to": {
+            "type": "literal",
+            "value": "tf_static"
+          }
+        }
+      ]
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:c898b52d#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:c898b52d#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "mogi_trajectory_server"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "mogi_trajectory_server"
+      },
+      "name": {
+        "type": "literal",
+        "value": "mogi_trajectory_server"
+      },
+      "parameters": {
+        "reference_frame_id": {
+          "type": "literal",
+          "value": "map"
+        }
+      }
+    },
+    "la:file_examples_real_python_spawn_robot_launch_py:89fedbf2#0": {
+      "id": "la:file_examples_real_python_spawn_robot_launch_py:89fedbf2#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/spawn_robot.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "robot_localization"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "ekf_node"
+      },
+      "name": {
+        "type": "literal",
+        "value": "ekf_filter_node"
+      },
+      "parameters": {
+        "use_sim_time": {
+          "type": "argument_reference",
+          "argument_name": "use_sim_time"
+        }
+      }
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_spawn_robot_launch_py:50c0b4d2#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:57a4eed6#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:8e882987#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:7174f267#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:73181093#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:c055eba9#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:8e31550a#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:c58550db#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:c15eb23e#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:f5455c33#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:baff606b#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:63bdcd07#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:c898b52d#0",
+    "la:file_examples_real_python_spawn_robot_launch_py:89fedbf2#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/spawn_robot.launch.py"
+    }
+  }
+}

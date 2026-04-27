@@ -1,0 +1,60 @@
+{
+  "id": "launch_desc_file_examples_real_python_on_shutdown_example_launch_py",
+  "launch_file_id": "file_examples_real_python_on_shutdown_example_launch_py",
+  "format": "python",
+  "actions": {
+    "la:file_examples_real_python_on_shutdown_example_launch_py:b293b7d2#0": {
+      "id": "la:file_examples_real_python_on_shutdown_example_launch_py:b293b7d2#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/on_shutdown_example.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "demo_nodes_cpp"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "talker"
+      },
+      "name": {
+        "type": "literal",
+        "value": "demo_talker"
+      }
+    },
+    "la:file_examples_real_python_on_shutdown_example_launch_py:0af1ca0d#0": {
+      "id": "la:file_examples_real_python_on_shutdown_example_launch_py:0af1ca0d#0",
+      "action_type": "node",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file": "examples/real-python/on_shutdown_example.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "__executable__"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "['echo blah']"
+      }
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_on_shutdown_example_launch_py:b293b7d2#0",
+    "la:file_examples_real_python_on_shutdown_example_launch_py:0af1ca0d#0"
+  ],
+  "provenance": {
+    "extraction_method": "static_analysis",
+    "confidence": 0.85,
+    "source_location": {
+      "file": "examples/real-python/on_shutdown_example.launch.py"
+    }
+  }
+}
