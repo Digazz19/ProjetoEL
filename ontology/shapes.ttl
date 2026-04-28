@@ -1,0 +1,85 @@
+@prefix ros: <http://example.org/ros-launch#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ros:LaunchDescriptionShape a sh:NodeShape ;
+    sh:targetClass ros:LaunchDescription ;
+    sh:property [
+        sh:path ros:hasLaunchFileId ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ros:hasFormat ;
+        sh:minCount 1 ;
+        sh:in ("python" "xml" "yaml") ;
+    ] ;
+    sh:property [
+        sh:path ros:hasAction ;
+        sh:minCount 1 ;
+    ] .
+
+ros:LaunchActionShape a sh:NodeShape ;
+    sh:targetClass ros:LaunchAction ;
+    sh:property [
+        sh:path ros:hasActionId ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^la:[^:]+:[0-9a-f]{8}#[0-9]+$" ;
+    ] .
+
+ros:NodeActionShape a sh:NodeShape ;
+    sh:targetClass ros:NodeAction ;
+    sh:property [
+        sh:path ros:hasPackage ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ros:hasExecutable ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] .
+
+ros:DeclareArgumentActionShape a sh:NodeShape ;
+    sh:targetClass ros:DeclareArgumentAction ;
+    sh:property [
+        sh:path ros:hasArgumentName ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] .
+
+ros:SetParameterActionShape a sh:NodeShape ;
+    sh:targetClass ros:SetParameterAction ;
+    sh:property [
+        sh:path ros:hasParameter ;
+        sh:minCount 1 ;
+    ] .
+
+ros:IncludeActionShape a sh:NodeShape ;
+    sh:targetClass ros:IncludeAction ;
+    sh:property [
+        sh:path ros:includesLaunch ;
+        sh:minCount 1 ;
+    ] .
+
+ros:RemappingShape a sh:NodeShape ;
+    sh:targetClass ros:Remapping ;
+    sh:property [
+        sh:path ros:remapFrom ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] ;
+    sh:property [
+        sh:path ros:remapTo ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] .
+
+ros:ParameterShape a sh:NodeShape ;
+    sh:targetClass ros:Parameter ;
+    sh:property [
+        sh:path ros:hasParameterName ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+    ] .

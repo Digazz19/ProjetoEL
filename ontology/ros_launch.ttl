@@ -1,0 +1,151 @@
+@prefix ros: <http://example.org/ros-launch#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ros: a owl:Ontology ;
+    rdfs:label "ROS 2 Launch Layer 2 Ontology" .
+
+ros:LaunchDescription a owl:Class .
+ros:LaunchAction a owl:Class .
+
+ros:DeclareArgumentAction a owl:Class ;
+    rdfs:subClassOf ros:LaunchAction .
+
+ros:SetParameterAction a owl:Class ;
+    rdfs:subClassOf ros:LaunchAction .
+
+ros:PushNamespaceAction a owl:Class ;
+    rdfs:subClassOf ros:LaunchAction .
+
+ros:NodeAction a owl:Class ;
+    rdfs:subClassOf ros:LaunchAction .
+
+ros:IncludeAction a owl:Class ;
+    rdfs:subClassOf ros:LaunchAction .
+
+ros:GroupAction a owl:Class ;
+    rdfs:subClassOf ros:LaunchAction .
+
+ros:LaunchSubstitution a owl:Class .
+ros:LiteralSubstitution a owl:Class ;
+    rdfs:subClassOf ros:LaunchSubstitution .
+
+ros:ArgumentReference a owl:Class ;
+    rdfs:subClassOf ros:LaunchSubstitution .
+
+ros:EnvironmentVariable a owl:Class ;
+    rdfs:subClassOf ros:LaunchSubstitution .
+
+ros:FilePath a owl:Class ;
+    rdfs:subClassOf ros:LaunchSubstitution .
+
+ros:ExpressionSubstitution a owl:Class ;
+    rdfs:subClassOf ros:LaunchSubstitution .
+
+ros:Remapping a owl:Class .
+ros:Parameter a owl:Class .
+ros:Condition a owl:Class .
+ros:Provenance a owl:Class .
+
+ros:hasAction a owl:ObjectProperty ;
+    rdfs:domain ros:LaunchDescription ;
+    rdfs:range ros:LaunchAction .
+
+ros:hasTopLevelAction a owl:ObjectProperty ;
+    rdfs:domain ros:LaunchDescription ;
+    rdfs:range ros:LaunchAction .
+
+ros:hasChildAction a owl:ObjectProperty ;
+    rdfs:domain ros:LaunchAction ;
+    rdfs:range ros:LaunchAction .
+
+ros:includesLaunch a owl:ObjectProperty ;
+    rdfs:domain ros:IncludeAction .
+    
+ros:hasParameter a owl:ObjectProperty ;
+    rdfs:domain ros:LaunchAction ;
+    rdfs:range ros:Parameter .
+
+ros:hasRemapping a owl:ObjectProperty ;
+    rdfs:domain ros:NodeAction ;
+    rdfs:range ros:Remapping .
+
+ros:hasCondition a owl:ObjectProperty ;
+    rdfs:domain ros:LaunchAction ;
+    rdfs:range ros:Condition .
+
+ros:hasProvenance a owl:ObjectProperty ;
+    rdfs:domain ros:LaunchAction ;
+    rdfs:range ros:Provenance .
+
+ros:hasSubstitution a owl:ObjectProperty ;
+    rdfs:range ros:LaunchSubstitution .
+
+ros:hasPackage a owl:DatatypeProperty ;
+    rdfs:domain ros:NodeAction ;
+    rdfs:range xsd:string .
+
+ros:hasExecutable a owl:DatatypeProperty ;
+    rdfs:domain ros:NodeAction ;
+    rdfs:range xsd:string .
+
+ros:hasNodeName a owl:DatatypeProperty ;
+    rdfs:domain ros:NodeAction ;
+    rdfs:range xsd:string .
+
+ros:hasNamespace a owl:DatatypeProperty ;
+    rdfs:domain ros:LaunchAction ;
+    rdfs:range xsd:string .
+
+ros:hasArgumentName a owl:DatatypeProperty ;
+    rdfs:domain ros:DeclareArgumentAction ;
+    rdfs:range xsd:string .
+
+ros:hasDefaultValue a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+ros:hasParameterName a owl:DatatypeProperty ;
+    rdfs:domain ros:Parameter ;
+    rdfs:range xsd:string .
+
+ros:hasParameterValue a owl:DatatypeProperty ;
+    rdfs:domain ros:Parameter ;
+    rdfs:range xsd:string .
+
+ros:hasTargetScope a owl:DatatypeProperty ;
+    rdfs:domain ros:SetParameterAction ;
+    rdfs:range xsd:string .
+
+ros:remapFrom a owl:DatatypeProperty ;
+    rdfs:domain ros:Remapping ;
+    rdfs:range xsd:string .
+
+ros:remapTo a owl:DatatypeProperty ;
+    rdfs:domain ros:Remapping ;
+    rdfs:range xsd:string .
+
+ros:hasConditionExpression a owl:DatatypeProperty ;
+    rdfs:domain ros:Condition ;
+    rdfs:range xsd:string .
+
+ros:hasActionId a owl:DatatypeProperty ;
+    rdfs:domain ros:LaunchAction ;
+    rdfs:range xsd:string .
+
+ros:hasLaunchFileId a owl:DatatypeProperty ;
+    rdfs:domain ros:LaunchDescription ;
+    rdfs:range xsd:string .
+
+ros:hasFormat a owl:DatatypeProperty ;
+    rdfs:domain ros:LaunchDescription ;
+    rdfs:range xsd:string .
+
+ros:hasSourceFile a owl:DatatypeProperty ;
+    rdfs:domain ros:Provenance ;
+    rdfs:range xsd:string .
+
+ros:hasConfidence a owl:DatatypeProperty ;
+    rdfs:domain ros:Provenance ;
+    rdfs:range xsd:decimal .

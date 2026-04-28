@@ -4,4 +4,4 @@ __pycache__/
 venv/
 output/
 *.layer2.json
-*.ttl
+output/**/*.ttl
