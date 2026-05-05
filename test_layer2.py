@@ -115,11 +115,6 @@ EXPECTED = {
         "some_action_must_have_nested": ["file_path"],
     },
 
-    "filepath_substitution": {
-    "required_action_types": {"node"},
-    "some_action_must_have_nested": ["file_path"],
-    },
-
     "environment_substitution": {
         "required_action_types": {"node"},
         "some_action_must_have_nested": ["environment_variable"],

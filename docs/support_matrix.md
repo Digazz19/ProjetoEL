@@ -27,11 +27,13 @@ Ontologia e regras SHACL:
 
 Scripts principais:
 
-`test_layer2.py`  
-`scripts/export_layer2_to_rdf.py`  
-`scripts/export_all_layer2_to_rdf.py`  
-`scripts/validate_rdf.py`  
-`scripts/validate_all_rdf.py`
+| Script | Função |
+|---|---|
+| `test_layer2.py` | Executa os testes canónicos sobre launch files XML, YAML e Python. Para cada ficheiro, chama o parser correspondente, gera JSON Layer 2, verifica a estrutura esperada e executa o `Layer2Validator`. |
+| `scripts/export_layer2_to_rdf.py` | Converte um ficheiro JSON Layer 2 individual para RDF/Turtle, usando o vocabulário definido em `ontology/ros_launch.ttl`. |
+| `scripts/export_all_layer2_to_rdf.py` | Executa a conversão em lote. Percorre todos os ficheiros `.layer2.json` em `output/layer2-tests/` e chama `export_layer2_to_rdf.py` para cada um. |
+| `scripts/validate_rdf.py` | Valida um ficheiro RDF/Turtle individual contra as regras SHACL em `ontology/shapes.ttl`, usando `pyshacl`. |
+| `scripts/validate_all_rdf.py` | Executa a validação em lote. Percorre todos os ficheiros `.ttl` em `output/rdf/` e chama `validate_rdf.py` para cada um. |
 
 ---
 
