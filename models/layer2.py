@@ -538,7 +538,7 @@ class LaunchDescription:
     def _print_action(self, action: LaunchAction, indent: int = 4):
         pad = " " * indent
         detail_pad = " " * (indent + 10)
-        cond = f"   ⚑ {action.conditions[0]}" if action.conditions else ""
+        cond = f"   [if {action.conditions[0]}]" if action.conditions else ""
 
         def trunc(s, n):
             s = str(s) if s is not None else ""
