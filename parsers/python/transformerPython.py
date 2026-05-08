@@ -150,10 +150,6 @@ class LaunchPythonTransformer(Transformer):
         return LaunchSubstitution.literal(str(value)) if value is not None else LaunchSubstitution.literal(None)
 
     def _make_node_action(self, node_data: dict, condition: str = None) -> NodeAction:
-        # Combinar condição passada com _pending_condition do node_data
-        pending = node_data.get("_pending_condition")
-        if pending:
-            condition = f"({condition}) and ({pending})" if condition else pending
         """Cria um NodeAction a partir de um dict de node."""
         pkg = node_data.get("package") or node_data.get("pkg")
         exe = node_data.get("executable") or node_data.get("exec")
@@ -771,27 +767,6 @@ class LaunchPythonTransformer(Transformer):
             for branch_kind, nested_cond, nested_item in branches:
                 combined = f"({condition}) and ({nested_cond})" if nested_cond else condition
                 self._process_if_item(nested_item, combined)
-        elif isinstance(item, dict) and item.get("type") == "list_append":
-            # Padrão: lista.append(...) dentro de if
-            target = item["target"]
-            value = self._resolve(item["item"])
-            if isinstance(value, dict) and value.get("type") == "node_raw":
-                value = dict(value)
-                value["_pending_condition"] = condition
-            if target in self.variables and isinstance(self.variables[target], list):
-                self.variables[target].append(value)
-            else:
-                self.variables.setdefault(target, [])
-                if isinstance(self.variables[target], list):
-                    self.variables[target].append(value)
-        elif isinstance(item, dict) and item.get("type") == "add_action":
-            # Padrão: ld.add_action(...) dentro de if
-            target = item["target"]
-            action = self._resolve(item["action"])
-            if isinstance(action, dict) and action.get("type") == "node_raw":
-                self._ld.add_action(self._make_node_action(action, condition))
-            else:
-                self.launch_descriptions.setdefault(target, []).append(action)
 
     def _consume_return(self, value):
         resolved = self._resolve(value)
@@ -853,7 +828,29 @@ class LaunchPythonTransformer(Transformer):
                     file_value = self._resolve(action.get("file"))
                     if isinstance(file_value, dict) and file_value.get("type") == "launch_source":
                         file_value = file_value.get("path")
-                    file_str = str(file_value) if file_value else "unknown"
+                    file_value = self._resolve(file_value)
+                    # Tentar extrair nome do ficheiro de forma legível
+                    import re as _re2
+                    file_str = "unknown"
+                    if isinstance(file_value, list):
+                        # ex: [ThisLaunchFileDir(), '/file.launch.py'] — pegar no último elemento literal
+                        for part in reversed(file_value):
+                            part = self._resolve(part)
+                            if isinstance(part, str) and ('.launch' in part or part.endswith('.py')):
+                                file_str = part.strip('/')
+                                break
+                        if file_str == "unknown":
+                            file_str = str(file_value)
+                    elif isinstance(file_value, str):
+                        # Tentar extrair só o nome do ficheiro .launch.py/xml/yaml
+                        import os as _os2
+                        basename = _os2.path.basename(file_value)
+                        if ".launch" in basename:
+                            file_str = basename
+                        else:
+                            file_str = file_value
+                    elif file_value is not None:
+                        file_str = str(file_value)
                     included_id = ActionIDGenerator.file_id_from_path(file_str)
                     arg_mappings = {}
                     for arg in action.get("args", []):

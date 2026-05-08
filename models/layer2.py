@@ -538,7 +538,7 @@ class LaunchDescription:
     def _print_action(self, action: LaunchAction, indent: int = 4):
         pad = " " * indent
         detail_pad = " " * (indent + 10)
-        cond = f"   [if {action.conditions[0]}]" if action.conditions else ""
+        cond = f"   [if: {action.conditions[0]}]" if action.conditions else ""
 
         def trunc(s, n):
             s = str(s) if s is not None else ""
@@ -569,9 +569,27 @@ class LaunchDescription:
         elif isinstance(action, IncludeAction):
             import re as _re
             inc_id = action.included_launch_id
-            m = _re.search(r'file_(.+)', inc_id)
-            fname = m.group(1).replace('_', '/').strip('/') if m else inc_id
-            print(f"{pad}INCLUDE   {trunc(fname, 60)}{cond}")
+            clean = _re.sub(r"^launch_desc_file_", "", inc_id)
+            # Caso 1: nome simples (sem vars) — converter underscores para extensão
+            clean = _re.sub(r"_launch_py$", ".launch.py", clean)
+            clean = _re.sub(r"_launch_xml$", ".launch.xml", clean)
+            clean = _re.sub(r"_launch_yaml$", ".launch.yaml", clean)
+            if "type" not in clean and "var" not in clean:
+                fname = clean
+            else:
+                # Caso 2: os.path.join(var, ..., 'file.launch.py')
+                # Tentar extrair o nome do ficheiro do final do ID
+                m = _re.search(r"_____([a-z][a-z0-9_]+_launch(?:_py|_xml|_yaml)?)__+$", inc_id)
+                if m:
+                    fname = m.group(1)
+                    fname = _re.sub(r"_launch_py$", ".launch.py", fname)
+                    fname = _re.sub(r"_launch_xml$", ".launch.xml", fname)
+                    fname = _re.sub(r"_launch_yaml$", ".launch.yaml", fname)
+                else:
+                    # fallback: mostrar só o que vem depois do último separador
+                    m2 = _re.search(r"[a-z][a-z0-9_]+\.launch(?:\.py|\.xml|\.yaml)?$", clean)
+                    fname = m2.group(0) if m2 else trunc(clean, 70)
+            print(f"{pad}INCLUDE   {trunc(fname, 70)}{cond}")
             for k, v in (action.argument_mappings or {}).items():
                 print(f"{detail_pad}arg      {k} = {v.display()}")
             print()
