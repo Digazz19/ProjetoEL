@@ -82,6 +82,7 @@ class LaunchPythonTransformer(Transformer):
         # Estado intermédio (igual ao transformer antigo)
         self.variables = {}
         self.launch_descriptions = {}
+        self._aux_functions = {}   # funções auxiliares (ex: prepare_multiple_nodes)
         # LaunchDescription Layer 2 em construção
         self._ld = None
 
@@ -251,7 +252,37 @@ class LaunchPythonTransformer(Transformer):
         )
         for item in items:
             self._process_top_level(item)
+        # Extrair args de variáveis que nunca foram adicionadas ao ld
+        # (ex: declared_args no opaque_multi_nodes_inplace)
+        self._extract_orphan_args()
         return self._ld
+
+    def _extract_orphan_args(self):
+        """Extrai args de variáveis de lista que nunca foram adicionadas ao LaunchDescription."""
+        from models.layer2 import DeclareArgumentAction, ActionType
+        existing_arg_names = {
+            a.name for a in self._ld.actions.values()
+            if isinstance(a, DeclareArgumentAction)
+        }
+        for var_name, var_val in self.variables.items():
+            if not isinstance(var_val, list):
+                continue
+            for item in var_val:
+                if not isinstance(item, dict) or item.get("type") != "arg":
+                    continue
+                name = item.get("name", "")
+                if not name or name in existing_arg_names:
+                    continue
+                self._ld.add_action(DeclareArgumentAction(
+                    id=self._id_gen.generate(f"arg_{name}"),
+                    action_type=ActionType.DECLARE_ARGUMENT,
+                    name=str(name),
+                    default_value=self._sub(item.get("default")) if item.get("default") is not None else None,
+                    description=str(item.get("description")) if item.get("description") else None,
+                    choices=item.get("choices"),
+                    provenance=self._provenance(0.8),  # lower confidence — arg não foi explicitamente adicionado
+                ))
+                existing_arg_names.add(name)
 
     def stmt(self, items):
         return items[0] if items else None
@@ -319,7 +350,21 @@ class LaunchPythonTransformer(Transformer):
 
     def top_assign(self, items): return None
     def class_def(self, items): return None
-    def extra_funcdef(self, items): return None
+    def extra_funcdef(self, items):
+        """Guardar corpo de função auxiliar para análise posterior."""
+        if not items:
+            return None
+        name = str(items[0])
+        # items[0] = nome, items[1:] = args + body (suite é lista de stmts)
+        body = []
+        for item in items[1:]:
+            if isinstance(item, list):
+                body = item
+                break
+            elif isinstance(item, tuple):
+                body.append(item)
+        self._aux_functions[name] = body
+        return None
     def with_stmt(self, items): return None
     def closing_paren(self, items): return None
     def ignored_stmt(self, items): return None
@@ -339,6 +384,17 @@ class LaunchPythonTransformer(Transformer):
             if isinstance(clause, list):
                 results.extend(clause)
         return ("if_block", results)
+
+    def for_stmt(self, items):
+        """for VAR in ITER: suite — extrair loop simbólico."""
+        hdr = str(items[0])  # ex: "for i in range(0, N):"
+        suite = items[1] if len(items) > 1 else []
+        import re
+        # Extrair variável e iterador
+        m = re.match(r'for\s+(\w+)\s+in\s+(.+):\s*$', hdr)
+        var = m.group(1) if m else "i"
+        iterator = m.group(2).strip() if m else hdr
+        return ("for_block", var, iterator, suite if isinstance(suite, list) else [suite])
 
     def elif_clause(self, items):
         hdr = str(items[0])
@@ -505,6 +561,16 @@ class LaunchPythonTransformer(Transformer):
         if short == "PushRosNamespace":
             ns = self._resolve(args[0]) if args else self._resolve(kwargs.get("namespace"))
             return {"type": "push_namespace", "namespace": ns}
+
+        if short == "OpaqueFunction":
+            func = kwargs.get("function")
+            func_args = kwargs.get("args", [])
+            # Resolver o nome da função — pode ser var ref
+            if isinstance(func, dict) and func.get("type") == "var":
+                func_name = func.get("name")
+            else:
+                func_name = str(func) if func else None
+            return {"type": "opaque_function", "function": func_name, "args": func_args}
 
         if short == "GroupAction":
             children = self._resolve(args[0]) if args else self._resolve(kwargs.get("actions", []))
@@ -726,6 +792,9 @@ class LaunchPythonTransformer(Transformer):
                 _, branches = stmt
                 for branch_kind, condition, item in branches:
                     self._process_if_item(item, condition)
+            elif kind == "for_block":
+                # for loops no corpo principal — ignorar (dinâmicos)
+                pass
             elif kind == "return":
                 self._consume_return(stmt[1])
             elif isinstance(stmt, dict) and stmt.get("type") == "add_action":
@@ -767,6 +836,93 @@ class LaunchPythonTransformer(Transformer):
             for branch_kind, nested_cond, nested_item in branches:
                 combined = f"({condition}) and ({nested_cond})" if nested_cond else condition
                 self._process_if_item(nested_item, combined)
+
+    def _consume_aux_function(self, func_name: str):
+        """Analisa o corpo de uma função auxiliar e extrai acções simbólicas."""
+        body = self._aux_functions.get(func_name, [])
+        for stmt in body:
+            if stmt is None:
+                continue
+            kind = stmt[0] if isinstance(stmt, tuple) else None
+            if kind == "for_block":
+                _, var, iterator, suite = stmt
+                self._process_for_block(var, iterator, suite)
+            elif kind == "if_block":
+                _, branches = stmt
+                for branch_kind, condition, item in branches:
+                    if item is None:
+                        continue
+                    # Processar cada item dentro do if/else
+                    item_kind = item[0] if isinstance(item, tuple) else None
+                    if item_kind == "for_block":
+                        _, var, iterator, suite = item
+                        self._process_for_block(var, iterator, suite)
+                    else:
+                        self._process_if_item(item, condition)
+            elif kind == "assign":
+                _, name, value = stmt
+                self.variables[name] = self._resolve(value)
+            elif isinstance(stmt, dict) and stmt.get("type") == "add_action":
+                action = self._resolve(stmt["action"])
+                if isinstance(action, dict) and action.get("type") == "node_raw":
+                    self._ld.add_action(self._make_node_action(action))
+
+    def _process_for_block(self, var: str, iterator: str, suite: list):
+        """Processa um for loop — extrai nodes com condição for_range simbólica."""
+        import re
+        # Tentar extrair o range do iterador: range(N), range(0, N), etc.
+        range_var = None
+        m = re.match(r"range\s*\(\s*(?:0\s*,\s*)?(.+?)\s*\)", iterator)
+        if m:
+            raw_n = m.group(1).strip()
+            # Resolver o nome da variável
+            if raw_n.isidentifier():
+                resolved = self._resolve({"type": "var", "name": raw_n})
+                if isinstance(resolved, dict) and resolved.get("type") == "launch_config":
+                    range_var = resolved.get("name", raw_n)
+                elif isinstance(resolved, dict) and resolved.get("type") == "var":
+                    range_var = resolved.get("name", raw_n)
+                elif isinstance(resolved, str) and not resolved.startswith("int("):
+                    range_var = resolved
+                else:
+                    # Tentar encontrar o arg correspondente nas variables
+                    # ex: N = int(N_lc.perform(...)) onde N_lc = LaunchConfiguration('num_node_pairs')
+                    for vname, vval in self.variables.items():
+                        if isinstance(vval, dict) and vval.get("type") == "launch_config":
+                            range_var = vval.get("name", vname)
+                            break
+                    if not range_var:
+                        range_var = raw_n
+
+        # Condição simbólica limpa para os nodes extraídos
+        if range_var:
+            loop_condition = f"for {var} in range($(arg {range_var}))"
+        else:
+            loop_condition = f"for {var} in {iterator}"
+
+        # Processar os statements do corpo do loop
+        for stmt in suite:
+            if stmt is None:
+                continue
+            kind = stmt[0] if isinstance(stmt, tuple) else None
+            if kind == "assign":
+                _, name, value = stmt
+                resolved = self._resolve(value)
+                if isinstance(resolved, dict) and resolved.get("type") == "node_raw":
+                    self._ld.add_action(self._make_node_action(resolved, loop_condition))
+            elif isinstance(stmt, dict) and stmt.get("type") == "add_action":
+                action = self._resolve(stmt["action"])
+                if isinstance(action, dict) and action.get("type") == "node_raw":
+                    self._ld.add_action(self._make_node_action(action, loop_condition))
+            elif isinstance(stmt, dict) and stmt.get("type") == "list_append":
+                value = self._resolve(stmt["item"])
+                if isinstance(value, dict) and value.get("type") == "node_raw":
+                    self._ld.add_action(self._make_node_action(value, loop_condition))
+            elif kind == "if_block":
+                _, branches = stmt
+                for branch_kind, condition, item in branches:
+                    combined = f"({loop_condition}) and ({condition})" if condition else loop_condition
+                    self._process_if_item(item, combined)
 
     def _consume_return(self, value):
         resolved = self._resolve(value)
@@ -828,29 +984,7 @@ class LaunchPythonTransformer(Transformer):
                     file_value = self._resolve(action.get("file"))
                     if isinstance(file_value, dict) and file_value.get("type") == "launch_source":
                         file_value = file_value.get("path")
-                    file_value = self._resolve(file_value)
-                    # Tentar extrair nome do ficheiro de forma legível
-                    import re as _re2
-                    file_str = "unknown"
-                    if isinstance(file_value, list):
-                        # ex: [ThisLaunchFileDir(), '/file.launch.py'] — pegar no último elemento literal
-                        for part in reversed(file_value):
-                            part = self._resolve(part)
-                            if isinstance(part, str) and ('.launch' in part or part.endswith('.py')):
-                                file_str = part.strip('/')
-                                break
-                        if file_str == "unknown":
-                            file_str = str(file_value)
-                    elif isinstance(file_value, str):
-                        # Tentar extrair só o nome do ficheiro .launch.py/xml/yaml
-                        import os as _os2
-                        basename = _os2.path.basename(file_value)
-                        if ".launch" in basename:
-                            file_str = basename
-                        else:
-                            file_str = file_value
-                    elif file_value is not None:
-                        file_str = str(file_value)
+                    file_str = str(file_value) if file_value else "unknown"
                     included_id = ActionIDGenerator.file_id_from_path(file_str)
                     arg_mappings = {}
                     for arg in action.get("args", []):
@@ -883,6 +1017,12 @@ class LaunchPythonTransformer(Transformer):
                     for aid in new_ids:
                         self._ld.launch_sequence.remove(aid)
                     group.children = new_ids
+
+                elif t == "opaque_function":
+                    func_name = action.get("function")
+                    if func_name and func_name in self._aux_functions:
+                        # Analisar a função auxiliar simbolicamente
+                        self._consume_aux_function(func_name)
 
                 elif t == "load_composable_nodes":
                     # Processar os composable nodes directamente

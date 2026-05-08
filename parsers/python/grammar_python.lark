@@ -28,7 +28,7 @@ dotted_name: NAME ("." NAME)*
 
 funcdef: "def" "generate_launch_description" "(" ")" [ARROW] ":" suite
 
-extra_funcdef: "def" NAME "(" [extra_args] ")" [ARROW] ":" _NEWLINE _INDENT extra_item+ _DEDENT
+extra_funcdef: "def" NAME "(" [extra_args] ")" [ARROW] ":" _NEWLINE _INDENT func_stmt+ _DEDENT
 extra_args: /[^)]+/
 extra_item: _INDENT extra_item+ _DEDENT
           | /[^\n]+/ _NEWLINE
@@ -38,6 +38,7 @@ suite: _NEWLINE _INDENT func_stmt+ _DEDENT
 
 func_stmt: assign_stmt
          | if_stmt
+         | for_stmt
          | with_stmt
          | list_append_stmt
          | expr_stmt
@@ -47,6 +48,9 @@ func_stmt: assign_stmt
          | _NEWLINE
 
 list_append_stmt: NAME "." "append" "(" expr ")" _NEWLINE
+
+for_stmt: FOR_HDR suite
+FOR_HDR.3: /for[ \t]+[^\n:]+:/
 APPEND.2: "append"
 
 closing_paren: ")" _NEWLINE
