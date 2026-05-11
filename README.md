@@ -6,7 +6,7 @@ Extracção estática de arquitecturas ROS2 a partir de launch files em **XML**,
 
 ---
 
-## 🎯 Objectivo
+## 🎯 Objetivo
 
 Desenvolver um sistema de análise estática que, dado um launch file ROS2 em qualquer dos três formatos suportados, produz um modelo intermédio normalizado (Layer 2) que representa a arquitectura do sistema — nodes, argumentos, includes, grupos, namespaces, remappings, parameters — preservando a estrutura hierárquica e semântica simbólica.
 
@@ -45,14 +45,21 @@ ProjetoEL/
 │   ├── example.launch.py
 │   └── real-python/                    # 12 launch files ROS2 reais
 │
-├── output/                              # JSONs Layer 2 gerados
+├── output/                             # JSONs Layer 2 gerados automaticamente
+│
+└── docs/
+    ├── docs/
+    ├── haros_layer2.pdf            # Especificação Layer 2 — estrutura do modelo intermédio
+    ├── common.pdf                  # Tipos comuns HAROS (SourceRef, ElementProvenance, QoSProfile)
+    ├── layer6.pdf                  # Especificação Layer 6 — análise de resultados (Issues, Metrics)
+    └── README.md                   # Documentação técnica detalhada da estratégia de extracção
 ```
 
 ---
 
 ## 🏗️ Modelo Layer 2
 
-Conforme a especificação `haros_layer2.pdf`, o modelo captura um **programa simbólico de launch**:
+Conforme a especificação `haros_layer2.pdf` e `common.pdf`, o modelo captura um **programa simbólico de launch**:
 
 ### Estrutura principal
 
@@ -73,18 +80,13 @@ LaunchDescription:
 | `DeclareArgumentAction` | Declaração de argumento launch |
 | `SetParameterAction` | Definição de parâmetro no escopo |
 | `PushNamespaceAction` | Introdução de namespace |
-| `NodeAction` | Instanciação simbólica de node |
+| `NodeAction` | Instanciação simbólica de node (inclui ComposableNode) |
 | `IncludeAction` | Inclusão de outro launch file |
-| `GroupAction` | Agrupamento com scope opcional |
+| `GroupAction` | Agrupamento com scope opcional e hierarquia preservada |
 
 ### IDs Hash-based Determinísticos
 
 Formato: `la:<file_id>:<hash8>#<ordinal>`
-
-- `la:` — prefixo de launch action
-- `<file_id>` — ID do ficheiro de origem
-- `<hash8>` — hash MD5 de 8 hex chars sobre o snippet normalizado
-- `<ordinal>` — contador para colisões
 
 **Propriedades:**
 - ✅ Estáveis a formatting, comentários e ordem de kwargs
@@ -111,27 +113,34 @@ Expressões simbólicas em forma de árvore:
 # Fonte Python:
 if ROS_DISTRO == 'humble':
     ...
-
 # IR extraído:
 [["eq", ["env_get", "ROS_DISTRO"], "humble"]]
+
+# IfCondition(LaunchConfiguration('use_sim'))
+[["eq", ["launch_arg_get", "use_sim"], "true"]]
+
+# For loop simbólico:
+[["truthy", ["var_get", "for i in range($(arg num_node_pairs))"]]]
 ```
 
-Operadores suportados: `or`, `and`, `not`, `eq`, `neq`, `lt`, `gt`, `lte`, `gte`, `truthy`
+Operadores: `or`, `and`, `not`, `eq`, `neq`, `lt`, `gt`, `lte`, `gte`, `truthy`
 Acessores: `env_get`, `launch_arg_get`, `var_get`
 
-### Proveniência
+### Proveniência (conforme `common.pdf`)
 
 Cada acção e o próprio `LaunchDescription` carregam:
 
 ```json
 {
   "extraction_method": "static_analysis",
-  "source_location": {"file": "path/to/file.launch.py"},
-  "confidence": 1.0
+  "confidence": 1.0,
+  "source_location": {"file_path": "path/to/file.launch.py"},
+  "extractor_version": "ProjetoEL-2025",
+  "extraction_context": {"parser": "lark", "format": "py"}
 }
 ```
 
-A confidence reflecte o nível de certeza — `1.0` para literais, `0.9` para condicionais, `0.85` para o LaunchDescription Python (menor porque a análise estática de Python é mais difícil).
+Escala de `confidence`: `1.0` (literal) → `0.9` (condicional) → `0.85` (LaunchDescription Python) → `0.8` (arg órfão)
 
 ---
 
@@ -154,33 +163,29 @@ python3 main.py python examples/real-python
 
 ### Opções
 
-- `--no-tree` — omite a parse tree (mais rápido)
-- `--json` — também imprime o JSON no terminal
-- `--json-file` — força guardar JSON (já é guardado por omissão)
+| Opção | Descrição |
+|---|---|
+| `--no-tree` | Omite a parse tree (recomendado para uso normal) |
+| `--tree` | Mostra a parse tree Lark no terminal |
+| `--json` | Imprime o JSON Layer 2 completo no terminal (para além do summary) |
+| `--json-file` | Força guardar o JSON em ficheiro (já é guardado por omissão) |
+
+> O JSON é **sempre** guardado em `output/<nome>.layer2.json` independentemente das opções.
 
 ### Teste em lote
 
 ```bash
-python3 test_launchfiles.py                     # pasta default
+python3 test_launchfiles.py
 python3 test_launchfiles.py examples/real-python
 ```
+
+O JSON Layer 2 é guardado **automaticamente** em `output/<nome>.layer2.json` em todos os modos.
 
 ---
 
 ## 📤 Output
 
-**Terminal** — representação intermédia legível com:
-- Tabela de argumentos (NOME | DEFAULT | DESCRIÇÃO)
-- Acções principais da sequência
-- Acções filhas de grupos/namespaces
-- Resultado da validação Layer 2
-
-**Ficheiro JSON** — guardado automaticamente em `output/<nome>.layer2.json`:
-- Estrutura completa Layer 2 conforme especificação HAROS
-- `actions` como map de IDs, `launch_sequence` como lista ordenada
-- Todos os campos simbólicos, provenance, conditions
-
-### Exemplo de output terminal
+**Terminal** — representação intermédia legível:
 
 ```
   ════════════════════════════════════════════════════════════════════════
@@ -188,34 +193,34 @@ python3 test_launchfiles.py examples/real-python
   ════════════════════════════════════════════════════════════════════════
 
   ARGUMENTOS
-  ┌────────────────┬────────────────────────────────┬──────────────────────┐
-  │ NOME           │ DEFAULT                        │ DESCRIÇÃO            │
-  ├────────────────┼────────────────────────────────┼──────────────────────┤
-  │ world          │ home.sdf                       │ Name of the Gazebo … │
-  │ model          │ mogi_bot.urdf                  │ Name of the URDF de… │
-  │ x              │ 2.5                            │ x coordinate of spa… │
-  │ use_sim_time   │ True                           │ Flag to enable use_… │
-  └────────────────┴────────────────────────────────┴──────────────────────┘
+  ┌────────────────┬─────────────────┬─────────────────────────────────────┐
+  │ NOME           │ DEFAULT         │ DESCRIÇÃO                           │
+  ├────────────────┼─────────────────┼─────────────────────────────────────┤
+  │ world          │ home.sdf        │ Name of the Gazebo world file       │
+  │ use_sim_time   │ True            │ Flag to enable use_sim_time         │
+  └────────────────┴─────────────────┴─────────────────────────────────────┘
 
   ACÇÕES PRINCIPAIS
-  ────────────────────────────────────────────────────────────────────────
+  ──────────────────────────────────────────────────────────────────────────
   INCLUDE   world.launch.py
 
   NODE      ros_gz_sim / create
             param    use_sim_time = $(arg use_sim_time)
-            args     -name mogi_bot -topic robot_description -x $(arg x) ...
+            args     -x $(arg x) -y $(arg y) -z 0.5 -Y $(arg yaw)
 
   NODE      robot_state_publisher / robot_state_publisher   [robot_state_publisher]
             remap    /tf  →  tf
-            remap    /tf_static  →  tf_static
             param    use_sim_time = $(arg use_sim_time)
+
+  [JSON guardado em: output/spawn_robot.launch.layer2.json]
+  [VALIDAÇÃO ✓ sem erros]
 ```
 
 ---
 
 ## ✅ Validação Layer 2
 
-O validador (`Layer2Validator`) verifica 9 regras da especificação:
+O validador (`Layer2Validator`) verifica 9 regras:
 
 1. **actions_map_consistency** — chaves do mapa correspondem aos IDs
 2. **sequence_validity** — IDs na sequência existem no mapa
@@ -231,82 +236,85 @@ O validador (`Layer2Validator`) verifica 9 regras da especificação:
 
 ## 🔬 Funcionalidades Suportadas
 
-### Parsing — XML
-- ✅ `<node>`, `<arg>`, `<include>`, `<group>`, `<let>`, `<set_env>`
-- ✅ `<executable>`, `<param>`, `<remap>`, `<env>`
-- ✅ Atributos `if` e `unless` (condições)
+### XML
+- ✅ `<node>`, `<arg>`, `<include>`, `<group>`, `<let>`, `<set_env>`, `<push-ros-namespace>`
+- ✅ `<param>`, `<remap>`, `<env>`, `<executable>`
+- ✅ Atributos `if` e `unless` com condições IR
 - ✅ Substituições `$(var ...)`, `$(env ...)`, `$(find-pkg-share ...)`
 
-### Parsing — YAML
-- ✅ Estrutura YAML launch ROS2 (`launch:` → elementos)
+### YAML
+- ✅ Estrutura YAML launch ROS2 com `YamlIndenter`
 - ✅ `node`, `arg`, `include`, `group`, `let`, `set_env`
-- ✅ `executable`, `param`, `remap`, `env`
-- ✅ Indentação via `YamlIndenter`
+- ✅ `param`, `remap`, `env`
 
-### Parsing — Python
+### Python
 - ✅ `Node`, `DeclareLaunchArgument`, `IncludeLaunchDescription`
-- ✅ `SetEnvironmentVariable`, `ExecuteProcess`
+- ✅ `SetEnvironmentVariable`, `ExecuteProcess`, `SetParameter`
 - ✅ `PushRosNamespace` → `PushNamespaceAction`
-- ✅ `GroupAction` com preservação de hierarquia (children)
+- ✅ `GroupAction` com hierarquia preservada (`children` IDs)
 - ✅ `ComposableNode`, `ComposableNodeContainer`, `LoadComposableNodes`
-- ✅ `LaunchConfiguration` → argument_reference
-- ✅ `os.environ` → environment_variable
-- ✅ `list.append()` para construção incremental
-- ✅ Condições `if/elif/else` com IR
-- ✅ f-strings, subscripts, tuple unpacking
+- ✅ `IfCondition`, `UnlessCondition` → condições IR
+- ✅ `OpaqueFunction` — análise de funções auxiliares com `for` loops simbólicos
+- ✅ `LaunchConfiguration` → `argument_reference`
+- ✅ `os.environ` → `environment_variable`
+- ✅ `list.append()` para construção incremental de listas
+- ✅ `if/elif/else` com extracção de condições IR
+- ✅ `for i in range(N)` → condição simbólica `for i in range($(arg N))`
 - ✅ `LaunchDescription` simples e qualificado (`launch.LaunchDescription`)
-- ✅ Variáveis não resolvidas mantidas como referências pendentes
-
-### Resolução semântica
-- ✅ Variáveis resolvidas em tempo de transformação
-- ✅ Flatten correcto de listas aninhadas
+- ✅ Args declarados mas não adicionados ao `ld` (args órfãos com `confidence=0.8`)
 - ✅ Concatenação `declared_args + [outros]`
-- ✅ Filtragem de items não-acção
 
 ---
 
 ## 📊 Resultados de Teste
 
-Testado em **12 launch files Python reais** (pasta `examples/real-python/`):
+Testado em **12 launch files Python reais**:
 
 | Ficheiro | Acções | Nodes | Args | Includes | Validação |
 |---|--:|--:|--:|--:|:-:|
 | `bringup_launch.py` | 25 | 1 | 17 | 5 | ✓ |
-| `camera.launch.py` | 7 | 2 | 5 | 0 | ✓ |
+| `camera.launch.py` | 8 | 3 | 5 | 0 | ✓ |
 | `multi_nodes_no_opaque.launch.py` | 1 | 0 | 1 | 0 | ✓ |
-| `navigation_launch.py` | 39 | 24 | 12 | 0 | ✓ |
+| `navigation_launch.py` | 41 | 24 | 12 | 0 | ✓ |
 | `on_shutdown_example.launch.py` | 2 | 1 | 0 | 0 | ✓ |
-| `opaque_multi_nodes.launch.py` | 1 | 0 | 1 | 0 | ✓ |
-| `opaque_multi_nodes_inplace.launch.py` | 0 | 0 | 0 | 0 | ✓ |
+| `opaque_multi_nodes.launch.py` | 3 | 2 | 1 | 0 | ✓ |
+| `opaque_multi_nodes_inplace.launch.py` | 3 | 2 | 1 | 0 | ✓ |
 | `robot.launch.py` | 8 | 1 | 4 | 2 | ✓ |
 | `rviz2.launch.py` | 1 | 1 | 0 | 0 | ✓ |
 | `spawn_robot.launch.py` | 14 | 7 | 6 | 1 | ✓ |
 | `topic_params.launch.py` | 3 | 2 | 0 | 1 | ✓ |
 | `turtlebot3_state_publisher.launch.py` | 2 | 1 | 1 | 0 | ✓ |
 
-**Totais:** 12/12 OK · 40 nodes · 47 args · 9 includes · 100% validação Layer 2.
+**12/12 OK · 100% validação Layer 2**
 
 ---
 
 ## ⚠️ Limitações Conhecidas
 
-Estas limitações são fundamentais da análise estática — são resolvíveis apenas em runtime:
+Limitações fundamentais da análise estática — resolvíveis apenas em runtime:
 
-- **`OpaqueFunction`** com callbacks a funções auxiliares — nodes criados dinamicamente não são extraíveis (ex: `opaque_multi_nodes.launch.py`)
-- **`has_resource()`** — condições avaliadas apenas em runtime
-- **For loops dinâmicos** — `for i in range(N)` com `N` vindo de runtime
-- **`os.path.join()` com variáveis** — paths de includes ficam não resolvidos
-- **f-strings com valores dinâmicos** — algumas aspas ficam mal interpretadas
-- **Namespace em Python** — `PushRosNamespace` é registado como acção mas os filhos não herdam explicitamente o namespace (análise de fluxo seria necessária)
-
-Todas as limitações estão documentadas e validadas honestamente — o output correcto para casos impossíveis é `0 acções`.
+- **`OpaqueFunction` com callbacks inacessíveis** — quando a função auxiliar usa lógica impossível de analisar (ex: `N_lc.perform(context)`), os nodes são extraídos com condição simbólica `for i in range($(arg N))`
+- **`has_resource()`** — condição de runtime; o node é extraído com condição simbólica
+- **`os.path.join(variavel, ...)`** — paths de includes com variáveis não resolvidas ficam com ID parcial
+- **f-strings com variáveis de loop** — `f"ns{i}"` guardado como `"ns{i}"` literal
+- **Classes externas** — `LaunchConfigAsBool` (nav2_common) guardada como string
 
 ---
 
 ## 🔧 Dependências
 
+```bash
+pip install lark
+```
+
 - **Python 3.12+**
-- **Lark** (`pip install lark`)
+- **Lark** — parser PEG/LALR
+
+---
+
+## 📚 Documentação
+
+- `docs/README.md` — estratégia detalhada de extracção, casos complexos e limitações
 
 ---
 
@@ -320,6 +328,7 @@ Todas as limitações estão documentadas e validadas honestamente — o output 
 
 ## 📚 Referências
 
-- **Especificação HAROS Layer 2** — documento `haros_layer2.pdf` do professor
+- **Especificação HAROS Layer 2** — `haros_layer2.pdf`
+- **HAROS Common Types** — `common.pdf`
 - **ROS2 Launch System** — [docs.ros.org](https://docs.ros.org/en/humble/Tutorials/Intermediate/Launch/)
 - **Lark Parser** — [github.com/lark-parser/lark](https://github.com/lark-parser/lark)
