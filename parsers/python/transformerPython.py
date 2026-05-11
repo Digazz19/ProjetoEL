@@ -59,7 +59,7 @@ from models.layer2 import (
     LaunchDescription,
     LaunchSubstitution,
     ElementProvenance,
-    SourceLocation,
+    SourceRef,
     ActionIDGenerator,
     DeclareArgumentAction,
     SetParameterAction,
@@ -89,7 +89,7 @@ class LaunchPythonTransformer(Transformer):
     def _provenance(self, confidence: float = 1.0) -> ElementProvenance:
         return ElementProvenance(
             extraction_method="static_analysis",
-            source_location=SourceLocation(file=self._file_path),
+            source_location=SourceRef(file_path=self._file_path),
             confidence=confidence,
         )
 
@@ -246,8 +246,10 @@ class LaunchPythonTransformer(Transformer):
             format="python",
             provenance=ElementProvenance(
                 extraction_method="static_analysis",
-                source_location=SourceLocation(file=self._file_path),
+                source_location=SourceRef(file_path=self._file_path),
                 confidence=0.85,
+                extractor_version="ProjetoEL-2026",
+                extraction_context={"parser": "lark", "format": self._file_path.split(".")[-1]},
             ),
         )
         for item in items:

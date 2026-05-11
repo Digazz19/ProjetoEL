@@ -12,7 +12,7 @@ from models.layer2 import (
     LaunchDescription,
     LaunchSubstitution,
     ElementProvenance,
-    SourceLocation,
+    SourceRef,
     ActionIDGenerator,
     DeclareArgumentAction,
     SetParameterAction,
@@ -72,7 +72,7 @@ class LaunchYAMLTransformer(Transformer):
     def _provenance(self, confidence: float = 1.0) -> ElementProvenance:
         return ElementProvenance(
             extraction_method="static_analysis",
-            source_location=SourceLocation(file=self._file_path),
+            source_location=SourceRef(file_path=self._file_path),
             confidence=confidence,
         )
 
@@ -115,7 +115,7 @@ class LaunchYAMLTransformer(Transformer):
             format="yaml",
             provenance=ElementProvenance(
                 extraction_method="static_analysis",
-                source_location=SourceLocation(file=self._file_path),
+                source_location=SourceRef(file_path=self._file_path),
                 confidence=0.95,
             ),
         )

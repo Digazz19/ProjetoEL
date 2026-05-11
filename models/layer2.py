@@ -6,7 +6,8 @@ Implementação conforme a especificação haros_layer2.md
 
 Classes:
     LaunchSubstitution      — valor simbólico (literal, arg_ref, env_var, file_path, expression)
-    ElementProvenance       — proveniência de um elemento (ficheiro, linha, método, confiança)
+    SourceRef               — localização num ficheiro fonte (conforme HAROS Common Types)
+    ElementProvenance       — proveniência completa de um elemento (conforme HAROS Common Types)
     LaunchAction            — acção base (abstract)
     DeclareArgumentAction   — declaração de argumento
     SetParameterAction      — definição de parâmetro
@@ -154,25 +155,71 @@ class LaunchSubstitution:
 # ---------------------------------------------------------------------------
 
 @dataclass
-class SourceLocation:
-    file: str
-    line: Optional[int] = None
-    column: Optional[int] = None
+class SourceRef:
+    """
+    Representa uma localização específica num ficheiro fonte.
+    Conforme a especificação HAROS Common Types.
+    """
+    file_path: str                      # caminho relativo ao workspace
+    line_start: Optional[int] = None    # linha inicial (1-indexed)
+    line_end: Optional[int] = None      # linha final (inclusive)
+    column_start: Optional[int] = None  # coluna inicial (1-indexed)
+    column_end: Optional[int] = None    # coluna final (inclusive)
+    note: Optional[str] = None          # nota explicativa
 
     def to_dict(self) -> dict:
-        d = {"file": self.file}
-        if self.line is not None:
-            d["line"] = self.line
-        if self.column is not None:
-            d["column"] = self.column
+        d = {"file_path": self.file_path}
+        if self.line_start is not None:
+            d["line_start"] = self.line_start
+        if self.line_end is not None:
+            d["line_end"] = self.line_end
+        if self.column_start is not None:
+            d["column_start"] = self.column_start
+        if self.column_end is not None:
+            d["column_end"] = self.column_end
+        if self.note:
+            d["note"] = self.note
         return d
+
+
+# Alias para compatibilidade com código antigo
+SourceLocation = SourceRef
 
 
 @dataclass
 class ElementProvenance:
+    """
+    Representa como uma entidade foi descoberta ou derivada.
+    Conforme a especificação HAROS Common Types.
+
+    Extraction methods:
+        static_analysis   — análise do código fonte sem execução
+        runtime_discovery — observado em sistema em execução
+        annotation        — especificado manualmente
+        composition       — derivado combinando outras entidades
+        heuristic         — inferido por pattern matching
+
+    Confidence scale:
+        1.0        — observado em runtime ou ground truth
+        0.9-0.99   — análise estática de padrões claros
+        0.7-0.89   — análise estática com complexidade moderada
+        0.5-0.69   — fluxo de controlo/dados complexo
+        0.3-0.49   — inferência heurística
+        < 0.3      — especulativo
+    """
     extraction_method: str = "static_analysis"
-    source_location: Optional[SourceLocation] = None
     confidence: float = 1.0
+    source_location: Optional[SourceRef] = None
+    additional_locations: List[Any] = field(default_factory=list)
+    extractor_version: Optional[str] = None
+    extraction_timestamp: Optional[str] = None   # ISO 8601
+    extraction_context: Dict[str, Any] = field(default_factory=dict)
+    notes: Optional[str] = None
+
+    VALID_METHODS = {
+        "static_analysis", "runtime_discovery",
+        "annotation", "composition", "heuristic"
+    }
 
     def to_dict(self) -> dict:
         d = {
@@ -181,6 +228,19 @@ class ElementProvenance:
         }
         if self.source_location:
             d["source_location"] = self.source_location.to_dict()
+        if self.additional_locations:
+            d["additional_locations"] = [
+                loc.to_dict() if hasattr(loc, "to_dict") else loc
+                for loc in self.additional_locations
+            ]
+        if self.extractor_version:
+            d["extractor_version"] = self.extractor_version
+        if self.extraction_timestamp:
+            d["extraction_timestamp"] = self.extraction_timestamp
+        if self.extraction_context:
+            d["extraction_context"] = self.extraction_context
+        if self.notes:
+            d["notes"] = self.notes
         return d
 
 
@@ -470,7 +530,7 @@ class LaunchDescription:
         W = 110
 
         if self.provenance and self.provenance.source_location:
-            fname = os.path.basename(self.provenance.source_location.file)
+            fname = os.path.basename(self.provenance.source_location.file_path)
         else:
             fname = self.launch_file_id
 
