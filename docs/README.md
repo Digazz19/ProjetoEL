@@ -1127,7 +1127,7 @@ A `launch_sequence` tem apenas **3 acções** (SET + 2 GROUP). As outras 38 est�
 ### Verificação
 
 ```bash
-python3 main.py python examples/real-python/navigation_launch.py --no-tree
+python3 main.py python examples/real-python/navigation_launch.py
 ```
 
 Output esperado:
@@ -1137,3 +1137,109 @@ GROUP  ns=—  (13 filhos)   [if: not use_composition]
 GROUP  ns=—  (13 filhos)   [if: use_composition]
 ACÇÕES FILHAS (26): 12 nodes standalone + 12 composable nodes
 ```
+
+
+---
+
+## 15. Issue Detection — Layer 6
+
+O `IssueDetector` analisa o `LaunchDescription` Layer 2 e produz `Issue` conforme a especificação `layer6.pdf`. É executado automaticamente após a validação Layer 2.
+
+### Estrutura de um `Issue`
+
+```json
+{
+  "id": "issue_file_spawn_001",
+  "severity": "warning",
+  "category": "architecture",
+  "description": "Include com path dinâmico não resolvível estaticamente.",
+  "affected_entities": [
+    {"type": "include", "id": "la:file_spawn:8e31550a#0"}
+  ],
+  "analysis_tool": "ProjetoEL-extractor",
+  "analysis_timestamp": "2025-05-12T10:30:00Z",
+  "location": {"file_path": "examples/real-python/spawn_robot.launch.py"},
+  "metadata": {
+    "included_launch_id": "launch_desc_file_os_path_join_..."
+  }
+}
+```
+
+### Issues detectáveis no Layer 2
+
+#### `node_no_name` — `[INFO]`
+
+```python
+Node(package='ros_gz_sim', executable='create')  # sem name=
+```
+
+Detectado quando `action.name is None`. O node vai usar o `executable` como nome por omissão em runtime — pode causar conflitos se houver dois nodes com o mesmo executable.
+
+#### `node_runtime_condition` — `[INFO]`
+
+```python
+if has_resource('packages', 'image_view'):
+    composable_nodes.append(ComposableNode(...))
+```
+
+Detectado quando a condição contém `has_resource`. O node só é instanciado se o package existir no sistema — informação de runtime.
+
+#### `opaque_symbolic_node` — `[WARNING]`
+
+```python
+for i in range(0, N):
+    ld.add_action(Node(package="demo_nodes_cpp", executable="talker"))
+```
+
+Detectado quando a condição contém `for` e `range`. O número exacto de instâncias depende do valor de `N` em runtime.
+
+#### `include_unresolved` — `[WARNING]`
+
+```python
+IncludeLaunchDescription(
+    PythonLaunchDescriptionSource(
+        os.path.join(pkg_var, 'launch', 'world.launch.py')
+    )
+)
+```
+
+Detectado quando o `included_launch_id` contém `os_path_join` ou `type____var` — o path não foi resolvível estaticamente.
+
+#### `arg_no_default` — `[WARNING]`
+
+```python
+DeclareLaunchArgument('num_pairs')  # sem default_value=
+```
+
+Detectado quando `action.default_value is None`. O arg tem de ser sempre fornecido ao invocar o launch file.
+
+#### `arg_orphan` — `[INFO]`
+
+```python
+declared_args = []
+declared_args.append(DeclareLaunchArgument("num_node_pairs", default_value="1"))
+ld = LaunchDescription()  # declared_args nunca adicionado!
+```
+
+Detectado quando `action.provenance.confidence < 0.9` — o arg foi extraído por `_extract_orphan_args` porque nunca foi adicionado explicitamente ao `LaunchDescription`.
+
+#### `namespace_implicit` — `[INFO]`
+
+Detectado quando existe um `PushNamespaceAction` no `LaunchDescription` e um `NodeAction` não tem `namespace` explícito — o node vai herdar o namespace do contexto em runtime.
+
+#### `include_self` — `[ERROR]`
+
+Detectado quando `action.included_launch_id == ld.id` — o launch file inclui-se a si próprio, criando um ciclo infinito.
+
+### Limitações — o que não é detectável no Layer 2
+
+Os issues mais graves do `layer6.pdf` requerem informação de camadas superiores:
+
+| Issue | Requer | Camada |
+|---|---|---|
+| QoS incompatibility | Tópicos publicados/subscritos e seus perfis QoS | Layer 1 + Layer 4 |
+| Type mismatch | Tipos de mensagens de cada tópico | Layer 1 |
+| Orphan publisher | Grafo completo de comunicação | Layer 4 |
+| Rate mismatch | Taxas de publicação | Layer 1/4 |
+
+Estes issues só podem ser detectados pelo HAROS após resolver o Layer 2 em instâncias concretas (Layer 3/4) e cruzar com a informação dos nodes (Layer 1).

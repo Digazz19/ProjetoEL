@@ -676,6 +676,301 @@ class LaunchDescription:
             print()
 
 
+
+# ---------------------------------------------------------------------------
+# Layer 6 — Issue Handling
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ElementRef:
+    """
+    Referência leve a outra entidade do metamodelo.
+    Conforme a especificação HAROS Common Types.
+    """
+    type: str       # "node", "include", "launch_description", "arg", etc.
+    id: str         # ID único da entidade referenciada
+    role: Optional[str] = None  # papel no contexto (ex: "source", "target")
+
+    def to_dict(self) -> dict:
+        d = {"type": self.type, "id": self.id}
+        if self.role:
+            d["role"] = self.role
+        return d
+
+
+@dataclass
+class Issue:
+    """
+    Representa um problema detectado na análise estática do launch file.
+    Conforme a especificação HAROS Layer 6.
+
+    Severidades:
+        critical — sistema não funciona correctamente
+        error    — bug provável ou comportamento incorrecto
+        warning  — problema potencial
+        info     — nota informativa
+        style    — convenção de estilo
+
+    Categorias:
+        communication  — tópicos, serviços, QoS
+        timing         — rates, latências, deadlines
+        architecture   — estrutura, ciclos, orphans, acoplamento
+        code_quality   — complexidade, duplicação
+        standards_compliance — violação de boas práticas
+        resource_usage — memória, CPU, bandwidth
+        security       — vulnerabilidades
+    """
+    id: str
+    severity: str                           # critical, error, warning, info, style
+    category: str                           # architecture, communication, etc.
+    description: str
+    affected_entities: List[ElementRef]
+    analysis_tool: str = "ProjetoEL-extractor"
+    analysis_timestamp: Optional[str] = None
+    location: Optional[SourceRef] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        import datetime
+        d = {
+            "id": self.id,
+            "severity": self.severity,
+            "category": self.category,
+            "description": self.description,
+            "affected_entities": [e.to_dict() for e in self.affected_entities],
+            "analysis_tool": self.analysis_tool,
+            "analysis_timestamp": self.analysis_timestamp or datetime.datetime.utcnow().isoformat() + "Z",
+        }
+        if self.location:
+            d["location"] = self.location.to_dict()
+        if self.metadata:
+            d["metadata"] = self.metadata
+        return d
+
+    def __str__(self):
+        loc = f" [{self.location.file_path}]" if self.location else ""
+        return f"[{self.severity.upper()}] {self.id}{loc}: {self.description}"
+
+
+class IssueDetector:
+    """
+    Analisa um LaunchDescription e produz Issues Layer 6.
+
+    Issues detectados:
+    - node_no_name           : NodeAction sem nome explícito
+    - include_unresolved     : IncludeAction com path não resolvido
+    - arg_orphan             : Arg declarado mas não adicionado ao LaunchDescription
+    - node_runtime_condition : Node com condição de runtime (has_resource, OpaqueFunction)
+    - opaque_symbolic_node   : Node extraído de OpaqueFunction com condição simbólica
+    - namespace_implicit     : PushNamespaceAction presente mas nodes sem namespace explícito
+    - include_self           : LaunchDescription inclui-se a si própria
+    - arg_no_default         : DeclareLaunchArgument sem default_value
+    """
+
+    def detect(self, ld: "LaunchDescription") -> List[Issue]:
+        issues = []
+        issues.extend(self._check_nodes(ld))
+        issues.extend(self._check_includes(ld))
+        issues.extend(self._check_args(ld))
+        issues.extend(self._check_namespace(ld))
+        return issues
+
+    # -----------------------------------------------------------------------
+    # Nodes
+    # -----------------------------------------------------------------------
+
+    def _check_nodes(self, ld: "LaunchDescription") -> List[Issue]:
+        issues = []
+        counter = [0]
+
+        def _issue_id():
+            counter[0] += 1
+            return f"issue_{ld.launch_file_id}_{counter[0]:03d}"
+
+        for aid, action in ld.actions.items():
+            if not isinstance(action, NodeAction):
+                continue
+
+            # Node sem nome explícito
+            if not action.name:
+                issues.append(Issue(
+                    id=_issue_id(),
+                    severity="info",
+                    category="architecture",
+                    description=f"Node '{action.executable.display() if action.executable else '?'}' "
+                                f"(pkg: {action.package.display() if action.package else '?'}) "
+                                f"não tem nome explícito — usa o executable como nome por omissão.",
+                    affected_entities=[ElementRef(type="node", id=aid)],
+                    location=action.provenance.source_location if action.provenance else None,
+                    metadata={
+                        "package": action.package.display() if action.package else None,
+                        "executable": action.executable.display() if action.executable else None,
+                    }
+                ))
+
+            # Node com condição de runtime (has_resource, OpaqueFunction for loop)
+            for cond in action.conditions:
+                cond_str = str(cond)
+                if "has_resource" in cond_str:
+                    issues.append(Issue(
+                        id=_issue_id(),
+                        severity="info",
+                        category="architecture",
+                        description=f"Node '{action.executable.display() if action.executable else '?'}' "
+                                    f"tem condição de runtime 'has_resource' — "
+                                    f"só é instanciado se o package estiver disponível.",
+                        affected_entities=[ElementRef(type="node", id=aid)],
+                        location=action.provenance.source_location if action.provenance else None,
+                        metadata={"condition": cond_str}
+                    ))
+                elif "for" in cond_str and "range" in cond_str:
+                    issues.append(Issue(
+                        id=_issue_id(),
+                        severity="warning",
+                        category="architecture",
+                        description=f"Node '{action.executable.display() if action.executable else '?'}' "
+                                    f"foi extraído de um OpaqueFunction com loop dinâmico — "
+                                    f"o número exacto de instâncias só é conhecido em runtime.",
+                        affected_entities=[ElementRef(type="node", id=aid)],
+                        location=action.provenance.source_location if action.provenance else None,
+                        metadata={"condition": cond_str}
+                    ))
+
+        return issues
+
+    # -----------------------------------------------------------------------
+    # Includes
+    # -----------------------------------------------------------------------
+
+    def _check_includes(self, ld: "LaunchDescription") -> List[Issue]:
+        issues = []
+        counter = [0]
+
+        def _issue_id():
+            counter[0] += 1
+            return f"issue_{ld.launch_file_id}_inc_{counter[0]:03d}"
+
+        for aid, action in ld.actions.items():
+            if not isinstance(action, IncludeAction):
+                continue
+
+            # Include com path não resolvido
+            inc_id = action.included_launch_id
+            if "os_path_join" in inc_id or "type____var" in inc_id or "type____launch" in inc_id:
+                issues.append(Issue(
+                    id=_issue_id(),
+                    severity="warning",
+                    category="architecture",
+                    description=f"Include com path dinâmico não resolvível estaticamente — "
+                                f"o ficheiro incluído só é determinado em runtime.",
+                    affected_entities=[ElementRef(type="include", id=aid)],
+                    location=action.provenance.source_location if action.provenance else None,
+                    metadata={"included_launch_id": inc_id}
+                ))
+
+            # Self-inclusion
+            if inc_id == ld.id or inc_id == f"launch_desc_{ld.launch_file_id}":
+                issues.append(Issue(
+                    id=_issue_id(),
+                    severity="error",
+                    category="architecture",
+                    description=f"LaunchDescription inclui-se a si própria — ciclo de inclusão detectado.",
+                    affected_entities=[ElementRef(type="include", id=aid)],
+                    location=action.provenance.source_location if action.provenance else None,
+                ))
+
+        return issues
+
+    # -----------------------------------------------------------------------
+    # Args
+    # -----------------------------------------------------------------------
+
+    def _check_args(self, ld: "LaunchDescription") -> List[Issue]:
+        issues = []
+        counter = [0]
+
+        def _issue_id():
+            counter[0] += 1
+            return f"issue_{ld.launch_file_id}_arg_{counter[0]:03d}"
+
+        for aid, action in ld.actions.items():
+            if not isinstance(action, DeclareArgumentAction):
+                continue
+
+            # Arg sem default value
+            if action.default_value is None or (
+                action.default_value.type == SubstitutionType.LITERAL and
+                action.default_value.value is None
+            ):
+                issues.append(Issue(
+                    id=_issue_id(),
+                    severity="warning",
+                    category="standards_compliance",
+                    description=f"Argumento '{action.name}' não tem valor por omissão — "
+                                f"deve ser sempre fornecido ao invocar o launch file.",
+                    affected_entities=[ElementRef(type="arg", id=aid)],
+                    location=action.provenance.source_location if action.provenance else None,
+                    metadata={"arg_name": action.name}
+                ))
+
+            # Arg órfão (confidence < 1.0 indica que não foi explicitamente adicionado ao ld)
+            if action.provenance and action.provenance.confidence < 0.9:
+                issues.append(Issue(
+                    id=_issue_id(),
+                    severity="info",
+                    category="architecture",
+                    description=f"Argumento '{action.name}' foi declarado mas não foi adicionado "
+                                f"explicitamente ao LaunchDescription — pode não estar acessível.",
+                    affected_entities=[ElementRef(type="arg", id=aid)],
+                    location=action.provenance.source_location if action.provenance else None,
+                    metadata={
+                        "arg_name": action.name,
+                        "confidence": action.provenance.confidence
+                    }
+                ))
+
+        return issues
+
+    # -----------------------------------------------------------------------
+    # Namespace
+    # -----------------------------------------------------------------------
+
+    def _check_namespace(self, ld: "LaunchDescription") -> List[Issue]:
+        issues = []
+        counter = [0]
+
+        def _issue_id():
+            counter[0] += 1
+            return f"issue_{ld.launch_file_id}_ns_{counter[0]:03d}"
+
+        # Verificar se há PushNamespaceAction
+        has_push_ns = any(
+            isinstance(a, PushNamespaceAction)
+            for a in ld.actions.values()
+        )
+
+        if has_push_ns:
+            # Nodes sem namespace explícito quando há push_namespace activo
+            for aid, action in ld.actions.items():
+                if isinstance(action, NodeAction) and not action.namespace and not action.conditions:
+                    issues.append(Issue(
+                        id=_issue_id(),
+                        severity="info",
+                        category="architecture",
+                        description=f"Node '{action.executable.display() if action.executable else '?'}' "
+                                    f"não tem namespace explícito mas existe um PushNamespaceAction activo — "
+                                    f"herda o namespace do contexto.",
+                        affected_entities=[ElementRef(type="node", id=aid)],
+                        location=action.provenance.source_location if action.provenance else None,
+                        metadata={
+                            "package": action.package.display() if action.package else None,
+                            "executable": action.executable.display() if action.executable else None,
+                        }
+                    ))
+
+        return issues
+
+
 # ---------------------------------------------------------------------------
 # Validador Layer 2
 # ---------------------------------------------------------------------------

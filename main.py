@@ -94,7 +94,7 @@ def process_file(parser, file_path, show_tree=False, as_json=False, json_file=Fa
 
         # Validação Layer 2
         try:
-            from models.layer2 import Layer2Validator
+            from models.layer2 import Layer2Validator, IssueDetector
             errors = Layer2Validator().validate(ld)
             if errors:
                 print(f"\n  [VALIDAÇÃO — {len(errors)} problema(s)]")
@@ -102,6 +102,15 @@ def process_file(parser, file_path, show_tree=False, as_json=False, json_file=Fa
                     print(f"    {e}")
             else:
                 print("  [VALIDAÇÃO sem erros]")
+
+            # Issue Detection (Layer 6)
+            issues = IssueDetector().detect(ld)
+            if issues:
+                print(f"\n  [ISSUES — {len(issues)} detectado(s)]")
+                for issue in issues:
+                    print(f"    [{issue.severity.upper():8s}] {issue.description}")
+            else:
+                print("  [ISSUES — nenhum detectado]")
         except Exception:
             pass
 
