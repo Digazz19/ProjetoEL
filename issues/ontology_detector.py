@@ -42,6 +42,22 @@ class OntologyIssueDetector:
         graph.parse(rdf_path, format=self._guess_format(rdf_path))
         return self.detect(graph)
 
+    def _entity_id_from_context(self, context: Dict[str, Any], idx: int) -> str:
+        for key in (
+            "publication_id",
+            "subscription_id",
+            "runtime_node_id",
+            "topic_id",
+            "action_id",
+            "entity",
+        ):
+            value = context.get(key)
+
+            if value:
+                return str(value)
+
+        return f"unknown_{idx}"
+
     def detect(self, graph: Graph) -> List[Issue]:
         issues: List[Issue] = []
 
@@ -62,11 +78,7 @@ class OntologyIssueDetector:
             for idx, row in enumerate(results, start=1):
                 context = self._row_to_context(row)
 
-                entity_id = (
-                    context.get("action_id")
-                    or context.get("entity")
-                    or f"unknown_{idx}"
-                )
+                entity_id = self._entity_id_from_context(context, idx)
 
                 issue_id = f"ontology_{key}_{idx:03d}"
 

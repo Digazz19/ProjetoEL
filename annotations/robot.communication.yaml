@@ -1,0 +1,45 @@
+# annotations/robot.communication.yaml
+
+architecture_id: robot_runtime_architecture
+configuration_id: default
+
+nodes:
+  - selector:
+      package: turtlebot3_node
+      executable: turtlebot3_ros
+
+    runtime_name: /turtlebot3_ros
+
+    publishes:
+      - topic: /odom
+        msg_type: nav_msgs/msg/Odometry
+        qos:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+      - topic: /tf
+        msg_type: tf2_msgs/msg/TFMessage
+        qos:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+    subscribes:
+      - topic: /cmd_vel
+        msg_type: geometry_msgs/msg/Twist
+        qos:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+      - topic: /scan
+        msg_type: sensor_msgs/msg/LaserScan
+        qos:
+          reliability: best_effort
+          durability: volatile
+          history: keep_last
+          depth: 5

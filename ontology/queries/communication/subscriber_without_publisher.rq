@@ -1,0 +1,23 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT ?entity ?subscription_id ?topic_id ?topic_name ?msg_type ?runtime_name ?package ?executable
+WHERE {
+  ?entity a ros:Subscription ;
+          ros:hasSubscriptionId ?subscription_id ;
+          ros:onTopic ?topic ;
+          ros:hasSubscriber ?node .
+
+  ?topic ros:hasTopicId ?topic_id ;
+         ros:hasTopicName ?topic_name .
+
+  ?node ros:hasRuntimeName ?runtime_name .
+
+  OPTIONAL { ?entity ros:hasMessageType ?msg_type . }
+  OPTIONAL { ?node ros:hasPackage ?package . }
+  OPTIONAL { ?node ros:hasExecutable ?executable . }
+
+  FILTER NOT EXISTS {
+    ?pub a ros:Publication ;
+         ros:onTopic ?topic .
+  }
+}

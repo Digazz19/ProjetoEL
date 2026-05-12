@@ -1,0 +1,24 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT
+  ?entity
+  ?topic_id
+  ?topic_name
+  ?msg_type
+  (COUNT(DISTINCT ?pub) AS ?publisher_count)
+  (GROUP_CONCAT(DISTINCT STR(?runtime_name); separator=", ") AS ?publishers)
+WHERE {
+  ?entity a ros:Topic ;
+          ros:hasTopicId ?topic_id ;
+          ros:hasTopicName ?topic_name .
+
+  OPTIONAL { ?entity ros:hasMessageType ?msg_type . }
+
+  ?pub a ros:Publication ;
+       ros:onTopic ?entity ;
+       ros:hasPublisher ?node .
+
+  ?node ros:hasRuntimeName ?runtime_name .
+}
+GROUP BY ?entity ?topic_id ?topic_name ?msg_type
+HAVING (COUNT(DISTINCT ?pub) > 1)

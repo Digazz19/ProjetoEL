@@ -1,0 +1,38 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT
+  ?entity
+  ?topic_id
+  ?topic_name
+  ?publisher_node
+  ?subscriber_node
+  ?publisher_reliability
+  ?subscriber_reliability
+WHERE {
+  ?topic a ros:Topic ;
+         ros:hasTopicId ?topic_id ;
+         ros:hasTopicName ?topic_name .
+
+  ?pub a ros:Publication ;
+       ros:onTopic ?topic ;
+       ros:hasPublisher ?pub_node ;
+       ros:hasQoS ?pub_qos .
+
+  ?sub a ros:Subscription ;
+       ros:onTopic ?topic ;
+       ros:hasSubscriber ?sub_node ;
+       ros:hasQoS ?sub_qos .
+
+  ?pub_node ros:hasRuntimeName ?publisher_node .
+  ?sub_node ros:hasRuntimeName ?subscriber_node .
+
+  ?pub_qos ros:qosReliability ?publisher_reliability .
+  ?sub_qos ros:qosReliability ?subscriber_reliability .
+
+  BIND(?topic AS ?entity)
+
+  FILTER(
+    LCASE(STR(?publisher_reliability)) = "best_effort"
+    && LCASE(STR(?subscriber_reliability)) = "reliable"
+  )
+}

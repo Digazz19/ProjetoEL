@@ -88,3 +88,48 @@ issues:
     description: "Node '{executable}' (pkg: {package}) não tem remappings declarados no launch file."
     recommendation: "Isto não indica necessariamente erro; apenas significa que o launch file não redefine nomes de tópicos/serviços para este node."
     entity_type: node
+
+  isolated_node:
+    enabled: true
+    severity: warning
+    category: communication
+    title: "Node isolado"
+    description: "Node '{runtime_name}' não publica nem subscreve tópicos na arquitetura anotada."
+    recommendation: "Confirmar se o node está incompleto nas anotações ou se é realmente isolado."
+    entity_type: runtime_node
+
+  publisher_without_subscriber:
+    enabled: true
+    severity: warning
+    category: communication
+    title: "Publisher sem subscriber"
+    description: "Topic '{topic_name}' publicado por '{runtime_name}' não tem subscribers anotados."
+    recommendation: "Confirmar se falta anotar algum subscriber ou se o tópico é intencionalmente apenas publicado."
+    entity_type: publication
+
+  subscriber_without_publisher:
+    enabled: true
+    severity: warning
+    category: communication
+    title: "Subscriber sem publisher"
+    description: "Topic '{topic_name}' subscrito por '{runtime_name}' não tem publishers anotados."
+    recommendation: "Confirmar se falta anotar algum publisher ou se o tópico vem de outro launch/runtime externo."
+    entity_type: subscription
+
+  topic_multiple_publishers:
+    enabled: true
+    severity: warning
+    category: communication
+    title: "Topic com múltiplos publishers"
+    description: "Topic '{topic_name}' tem {publisher_count} publishers anotados: {publishers}."
+    recommendation: "Verificar se múltiplos publishers no mesmo tópico são intencionais e compatíveis."
+    entity_type: topic
+
+  qos_reliability_mismatch:
+    enabled: true
+    severity: error
+    category: communication
+    title: "QoS reliability incompatível"
+    description: "Topic '{topic_name}' tem publisher '{publisher_node}' com reliability '{publisher_reliability}' mas subscriber '{subscriber_node}' requer '{subscriber_reliability}'."
+    recommendation: "Alinhar a reliability QoS entre publisher e subscriber."
+    entity_type: topic

@@ -1,0 +1,19 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT ?entity ?runtime_node_id ?runtime_name ?package ?executable
+WHERE {
+  ?entity a ros:RuntimeNode ;
+          ros:hasRuntimeNodeId ?runtime_node_id ;
+          ros:hasRuntimeName ?runtime_name .
+
+  OPTIONAL { ?entity ros:hasPackage ?package . }
+  OPTIONAL { ?entity ros:hasExecutable ?executable . }
+
+  FILTER NOT EXISTS {
+    ?entity ros:publishes ?pub .
+  }
+
+  FILTER NOT EXISTS {
+    ?entity ros:subscribes ?sub .
+  }
+}
