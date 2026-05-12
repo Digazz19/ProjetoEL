@@ -74,8 +74,11 @@ def add_provenance(g, action_uri, action):
     g.add((action_uri, ROS.hasProvenance, prov_uri))
 
     source = prov.get("source_location", {})
-    if isinstance(source, dict) and source.get("file"):
-        g.add((prov_uri, ROS.hasSourceFile, Literal(source["file"])))
+    if isinstance(source, dict):
+        source_file = source.get("file_path") or source.get("file")
+
+        if source_file:
+            g.add((prov_uri, ROS.hasSourceFile, Literal(source_file)))
 
     if prov.get("confidence") is not None:
         g.add((prov_uri, ROS.hasConfidence, Literal(float(prov["confidence"]), datatype=XSD.decimal)))
@@ -206,14 +209,23 @@ def layer2_json_to_graph(data: dict) -> Graph:
 
 def main():
     if len(sys.argv) < 2:
-        print("uso: python3 scripts/export_layer2_to_rdf.py output/layer2-tests/node.launch.py.layer2.json")
+        print("uso:")
+        print("  python3 scripts/export_layer2_to_rdf.py input.layer2.json [output.layer2.ttl]")
         return 2
 
     input_path = Path(sys.argv[1])
-    output_dir = Path("output/rdf")
-    output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = output_dir / f"{input_path.stem}.ttl"
+    if not input_path.exists():
+        print(f"[ERRO] JSON Layer 2 não encontrado: {input_path}")
+        return 1
+
+    if len(sys.argv) >= 3:
+        output_path = Path(sys.argv[2])
+    else:
+        output_dir = Path("output/rdf")
+        output_path = output_dir / f"{input_path.stem}.ttl"
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with input_path.open("r", encoding="utf-8") as f:
         data = json.load(f)

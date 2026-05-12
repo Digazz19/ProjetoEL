@@ -1,0 +1,11 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT ?entity ?action_id
+WHERE {
+  ?entity a ros:LaunchAction ;
+          ros:hasActionId ?action_id .
+
+  FILTER NOT EXISTS {
+    ?entity ros:hasProvenance ?prov .
+  }
+}

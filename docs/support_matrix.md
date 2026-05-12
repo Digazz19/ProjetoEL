@@ -77,7 +77,7 @@ FAIL: 0
 Resultado:
 
 ```text
-PASS: 23
+PASS: 28
 FAIL: 0
 ```
 

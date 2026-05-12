@@ -22,9 +22,18 @@ python3 -m py_compile \
   test_layer2.py \
   test_launchfiles.py \
   models/layer2.py \
+  models/layer6.py \
+  validation/layer2_validator.py \
+  issues/catalog.py \
+  issues/detector.py \
+  issues/io.py \
+  issues/ontology_detector.py \
   parsers/python/transformerPython.py \
   parsers/xml/transformerXML.py \
-  parsers/yaml/transformerYAML.py
+  parsers/yaml/transformerYAML.py \
+  scripts/export_layer2_to_rdf.py \
+  scripts/run_ontology_issues.py \
+  scripts/run_all_ontology_pipeline.py
 
 echo
 echo "======================================"
@@ -46,25 +55,19 @@ python3 test_launchfiles.py examples/real-python
 
 echo
 echo "======================================"
-echo "  5. Exportação RDF/Turtle dos testes Layer 2"
+echo "  5. Pipeline ontológico completo"
 echo "======================================"
-python3 scripts/export_all_layer2_to_rdf.py output/layer2-tests
+python3 scripts/run_all_ontology_pipeline.py output
 
 echo
 echo "======================================"
-echo "  6. Exportação RDF/Turtle dos exemplos reais Python"
-echo "======================================"
-python3 scripts/export_all_layer2_to_rdf.py output
-
-echo
-echo "======================================"
-echo "  7. Validação SHACL"
+echo "  6. Validação SHACL"
 echo "======================================"
 python3 scripts/validate_all_rdf.py
 
 echo
 echo "======================================"
-echo "  8. Resumo de outputs gerados"
+echo "  7. Resumo de outputs gerados"
 echo "======================================"
 echo "JSONs Layer 2 em output/:"
 find output -maxdepth 1 -name "*.layer2.json" | wc -l
@@ -74,6 +77,12 @@ find output/layer2-tests -name "*.layer2.json" | wc -l
 
 echo "RDFs Layer 2 em output/rdf/:"
 find output/rdf -maxdepth 1 -name "*.ttl" | wc -l
+
+echo "JSONs de issues estruturais em output/issues/:"
+find output/issues -maxdepth 1 -name "*.issues.json" ! -name "*.ontology.issues.json" | wc -l
+
+echo "JSONs de issues ontológicos em output/issues/:"
+find output/issues -maxdepth 1 -name "*.ontology.issues.json" | wc -l
 
 echo
 echo "======================================"

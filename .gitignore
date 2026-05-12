@@ -8,3 +8,5 @@ output/layer2-tests/
 
 # RDF gerado automaticamente
 output/rdf/
+
+output/

@@ -41,22 +41,43 @@ def test_file(parser, path):
         tree, ld = parser.parse(path)
 
         from models.layer2 import NodeAction, DeclareArgumentAction, IncludeAction
-        nodes    = sum(1 for a in ld.actions.values()
-                       if isinstance(a, NodeAction) and a.package
-                       and a.package.value != "__executable__")
-        args     = sum(1 for a in ld.actions.values() if isinstance(a, DeclareArgumentAction))
-        includes = sum(1 for a in ld.actions.values() if isinstance(a, IncludeAction))
+        nodes = sum(
+            1 for a in ld.actions.values()
+            if isinstance(a, NodeAction)
+            and a.package
+            and a.package.value != "__executable__"
+        )
+        args = sum(
+            1 for a in ld.actions.values()
+            if isinstance(a, DeclareArgumentAction)
+        )
+        includes = sum(
+            1 for a in ld.actions.values()
+            if isinstance(a, IncludeAction)
+        )
 
-        # Guardar JSON em output/
+        # Guardar JSON Layer 2 em output/
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         base_name = os.path.splitext(os.path.basename(path))[0]
         json_path = os.path.join(OUTPUT_DIR, f"{base_name}.layer2.json")
+
         with open(json_path, "w", encoding="utf-8") as f:
             f.write(ld.to_json(indent=2))
 
         # Validação Layer 2
-        from models.layer2 import Layer2Validator
+        from validation.layer2_validator import Layer2Validator
         errors = Layer2Validator().validate(ld)
+
+        # Issues Layer 6
+        from issues.detector import IssueDetector
+        from issues.io import write_issues_json
+
+        issues = IssueDetector().detect(ld)
+
+        issues_dir = os.path.join(OUTPUT_DIR, "issues")
+        issues_path = os.path.join(issues_dir, f"{base_name}.issues.json")
+
+        write_issues_json(issues, issues_path)
 
         return {
             "status": "OK",
@@ -66,22 +87,32 @@ def test_file(parser, path):
             "total_actions": len(ld.actions),
             "valid": len(errors) == 0,
             "validation_errors": len(errors),
+            "issues": len(issues),
             "json_path": json_path,
+            "issues_path": issues_path,
             "error": None,
         }
 
     except Exception as e:
         import re
+
         msg = str(e)
         m = re.search(r"line (\d+)[^\n]*col(?:umn)? (\d+)", msg)
         location = f" (linha {m.group(1)}, col {m.group(2)})" if m else ""
+
         return {
             "status": "ERRO",
-            "nodes": 0, "args": 0, "includes": 0, "total_actions": 0,
-            "valid": False, "validation_errors": 0, "json_path": None,
+            "nodes": 0,
+            "args": 0,
+            "includes": 0,
+            "total_actions": 0,
+            "valid": False,
+            "validation_errors": 0,
+            "issues": 0,
+            "json_path": None,
+            "issues_path": None,
             "error": msg.split("\n")[0][:100] + location,
         }
-
 
 def main():
     dirs = sys.argv[1:] if len(sys.argv) > 1 else DEFAULT_DIRS
@@ -115,9 +146,10 @@ def main():
             valid_str = "✓" if result["valid"] else f"✗ ({result['validation_errors']} erros)"
             print(f"  ✓  {name}")
             print(f"       acções={result['total_actions']}  nodes={result['nodes']}  "
-                  f"args={result['args']}  includes={result['includes']}  "
-                  f"validação={valid_str}")
-            print(f"       → {result['json_path']}")
+                f"args={result['args']}  includes={result['includes']}  "
+                f"issues={result['issues']}  validação={valid_str}")
+            print(f"       → layer2: {result['json_path']}")
+            print(f"       → issues: {result['issues_path']}")
         else:
             print(f"  ✗  {name}")
             print(f"       {result['error']}")
@@ -140,6 +172,7 @@ def main():
         print(f"\nEstatísticas:")
         print(f"  Nodes extraídos:  {sum(r['nodes'] for _, r in ok)}")
         print(f"  Args extraídos:   {sum(r['args'] for _, r in ok)}")
+        print(f"  Issues detectados:  {sum(r['issues'] for _, r in ok)}")
         print(f"  JSONs guardados:  {len(ok)}  →  {OUTPUT_DIR}/")
         if invalid:
             print(f"  ⚠ Validação falhou em {invalid} ficheiro(s)")

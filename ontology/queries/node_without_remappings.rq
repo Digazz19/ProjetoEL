@@ -1,0 +1,18 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT ?entity ?action_id ?package ?executable ?source_file
+WHERE {
+  ?entity a ros:NodeAction ;
+          ros:hasActionId ?action_id ;
+          ros:hasPackage ?package ;
+          ros:hasExecutable ?executable .
+
+  FILTER NOT EXISTS {
+    ?entity ros:hasRemapping ?remap .
+  }
+
+  OPTIONAL {
+    ?entity ros:hasProvenance ?prov .
+    ?prov ros:hasSourceFile ?source_file .
+  }
+}

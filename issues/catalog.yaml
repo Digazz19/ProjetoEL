@@ -1,0 +1,90 @@
+issues:
+  node_no_name:
+    enabled: true
+    severity: info
+    category: architecture
+    title: "Node sem nome explícito"
+    description: "Node '{executable}' (pkg: {package}) não tem nome explícito - usa o executable como nome por omissão."
+    recommendation: "Definir explicitamente o campo name quando for importante garantir nomes estáveis."
+    entity_type: node
+
+  node_runtime_condition:
+    enabled: true
+    severity: info
+    category: architecture
+    title: "Node com condição de runtime"
+    description: "Node '{executable}' tem condição de runtime '{condition}' - só é instanciado se a condição for satisfeita."
+    recommendation: "Validar esta condição numa configuração concreta ou por execução instrumentada."
+    entity_type: node
+
+  opaque_symbolic_node:
+    enabled: true
+    severity: warning
+    category: architecture
+    title: "Node extraído de OpaqueFunction"
+    description: "Node '{executable}' foi extraído de um OpaqueFunction com loop dinâmico - o número exacto de instâncias só é conhecido em runtime."
+    recommendation: "Complementar a análise estática com execução instrumentada ou anotação manual."
+    entity_type: node
+
+  include_unresolved:
+    enabled: true
+    severity: warning
+    category: architecture
+    title: "Include com path dinâmico"
+    description: "Include com path dinâmico não resolvível estaticamente - o ficheiro incluído só é determinado em runtime."
+    recommendation: "Resolver este include através de configuração concreta, execução instrumentada ou anotação."
+    entity_type: include
+
+  include_self:
+    enabled: true
+    severity: error
+    category: architecture
+    title: "Auto-inclusão de launch file"
+    description: "LaunchDescription inclui-se a si própria - ciclo de inclusão detectado."
+    recommendation: "Remover a inclusão circular ou separar a configuração comum para outro launch file."
+    entity_type: include
+
+  arg_no_default:
+    enabled: true
+    severity: warning
+    category: standards_compliance
+    title: "Argumento sem valor por omissão"
+    description: "Argumento '{arg_name}' não tem valor por omissão - deve ser sempre fornecido ao invocar o launch file."
+    recommendation: "Adicionar default_value quando existir um valor seguro por omissão."
+    entity_type: arg
+
+  arg_orphan:
+    enabled: true
+    severity: info
+    category: architecture
+    title: "Argumento possivelmente órfão"
+    description: "Argumento '{arg_name}' foi declarado mas não foi adicionado explicitamente ao LaunchDescription - pode não estar acessível."
+    recommendation: "Confirmar se o argumento é adicionado ao LaunchDescription ou se resulta de uma construção dinâmica."
+    entity_type: arg
+
+  namespace_implicit:
+    enabled: true
+    severity: info
+    category: architecture
+    title: "Namespace herdado implicitamente"
+    description: "Node '{executable}' não tem namespace explícito mas existe um PushNamespaceAction activo - herda o namespace do contexto."
+    recommendation: "Manter se for intencional; caso contrário, definir namespace explicitamente."
+    entity_type: node
+
+    action_without_provenance:
+    enabled: true
+    severity: warning
+    category: architecture
+    title: "Acção sem proveniência"
+    description: "A acção '{action_id}' não tem proveniência associada no grafo RDF."
+    recommendation: "Garantir que todas as acções exportadas para RDF mantêm ligação à localização de origem."
+    entity_type: launch_action
+
+  node_without_remappings:
+    enabled: false
+    severity: info
+    category: architecture
+    title: "Node sem remappings declarados"
+    description: "Node '{executable}' (pkg: {package}) não tem remappings declarados no launch file."
+    recommendation: "Isto não indica necessariamente erro; apenas significa que o launch file não redefine nomes de tópicos/serviços para este node."
+    entity_type: node

@@ -1,0 +1,21 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT ?entity ?action_id ?included_launch_id ?source_file
+WHERE {
+  ?entity a ros:IncludeAction ;
+          ros:hasActionId ?action_id ;
+          ros:includesLaunch ?included_launch .
+
+  BIND(REPLACE(STR(?included_launch), "^.*/launch/", "") AS ?included_launch_id)
+
+  FILTER(
+    CONTAINS(?included_launch_id, "os_path_join")
+    || CONTAINS(?included_launch_id, "type____var")
+    || CONTAINS(?included_launch_id, "type____launch")
+  )
+
+  OPTIONAL {
+    ?entity ros:hasProvenance ?prov .
+    ?prov ros:hasSourceFile ?source_file .
+  }
+}

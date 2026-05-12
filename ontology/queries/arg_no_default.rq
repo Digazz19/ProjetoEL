@@ -1,0 +1,17 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT ?entity ?action_id ?arg_name ?source_file
+WHERE {
+  ?entity a ros:DeclareArgumentAction ;
+          ros:hasActionId ?action_id ;
+          ros:hasArgumentName ?arg_name .
+
+  FILTER NOT EXISTS {
+    ?entity ros:hasDefaultValue ?default .
+  }
+
+  OPTIONAL {
+    ?entity ros:hasProvenance ?prov .
+    ?prov ros:hasSourceFile ?source_file .
+  }
+}

@@ -1,3 +1,4 @@
 lark
 rdflib
 pyshacl
+PyYAML

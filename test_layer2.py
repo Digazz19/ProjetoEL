@@ -42,7 +42,7 @@ def to_dict(obj):
 
 def validate_layer2(layer2_obj):
     try:
-        from models.layer2 import Layer2Validator
+        from validation.layer2_validator import Layer2Validator
     except ImportError:
         print("  [WARN] Não consegui importar models.layer2.Layer2Validator")
         return True, []

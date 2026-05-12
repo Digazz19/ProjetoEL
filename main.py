@@ -48,6 +48,21 @@ def detect_mode(file_path):
                 return mode
     return None
 
+def output_stem(file_path):
+    """
+    Normaliza nomes de output.
+
+    robot.launch.py -> robot.launch
+    camera.launch.py -> camera.launch
+    test.xml -> test
+    test.yaml -> test
+    """
+    base = os.path.basename(file_path)
+
+    if base.endswith(".launch.py"):
+        return base[:-3]  # remove ".py"
+
+    return os.path.splitext(base)[0]
 
 def collect_files(path, mode):
     if os.path.isfile(path):
@@ -81,8 +96,8 @@ def process_file(parser, file_path, show_tree=False, as_json=False, json_file=Fa
         # Sempre guardar o JSON em output/
         output_dir = "output"
         os.makedirs(output_dir, exist_ok=True)
-        base_name = os.path.basename(file_path)
-        json_path = os.path.join(output_dir, f"{base_name}.layer2.json")
+        stem = output_stem(file_path)
+        json_path = os.path.join(output_dir, f"{stem}.layer2.json")
         with open(json_path, "w", encoding="utf-8") as f:
             f.write(ld.to_json(indent=2))
         print(f"  [JSON guardado em: {json_path}]")
@@ -94,7 +109,8 @@ def process_file(parser, file_path, show_tree=False, as_json=False, json_file=Fa
 
         # Validação Layer 2
         try:
-            from models.layer2 import Layer2Validator, IssueDetector
+            from validation.layer2_validator import Layer2Validator
+            from issues.detector import IssueDetector       
             errors = Layer2Validator().validate(ld)
             if errors:
                 print(f"\n  [VALIDAÇÃO — {len(errors)} problema(s)]")
@@ -104,13 +120,21 @@ def process_file(parser, file_path, show_tree=False, as_json=False, json_file=Fa
                 print("  [VALIDAÇÃO sem erros]")
 
             # Issue Detection (Layer 6)
+            from issues.io import write_issues_json
+
             issues = IssueDetector().detect(ld)
+
+            issues_path = os.path.join("output", "issues", f"{stem}.issues.json")
+            write_issues_json(issues, issues_path)
+
             if issues:
                 print(f"\n  [ISSUES — {len(issues)} detectado(s)]")
                 for issue in issues:
                     print(f"    [{issue.severity.upper():8s}] {issue.description}")
             else:
                 print("  [ISSUES — nenhum detectado]")
+
+            print(f"  [ISSUES JSON guardado em: {issues_path}]")
         except Exception:
             pass
 

@@ -19,12 +19,16 @@ Este documento detalha a estratégia usada para extrair e guardar cada tipo de i
 11. [Como a Proveniência é Guardada](#11-como-a-proveniência-é-guardada)
 12. [Como os IDs são Gerados](#12-como-os-ids-são-gerados)
 13. [Casos Especiais e Limitações](#13-casos-especiais-e-limitações)
+14. [Caso de Estudo: `navigation_launch.py`](#14-caso-de-estudo-navigation_launchpy--o-caso-mais-complexo)
+15. [Issue Detection — Layer 6](#15-issue-detection--layer-6)
+16. [Exportação RDF/Turtle e Issues Ontológicos](#16-exportação-rdfturtle-e-issues-ontológicos)
+17. [Pipeline Operacional e Demo](#17-pipeline-operacional-e-demo)
 
 ---
 
 ## 1. Visão Geral da Pipeline
 
-Cada launch file passa por 4 etapas:
+Cada launch file passa pelas etapas originais de parsing e transformação. Na versão actual, essa pipeline foi estendida com validação, geração de issues, exportação RDF e análise ontológica:
 
 ```
 Ficheiro fonte (.xml / .yaml / .py)
@@ -38,11 +42,23 @@ Ficheiro fonte (.xml / .yaml / .py)
         ▼  layer2.py
    LaunchDescription (em memória)
         │
-        ├──► print_summary()  →  Output legível no terminal
-        └──► to_json()        →  JSON guardado em output/
+        ├──► print_summary()              → Output legível no terminal
+        ├──► to_json()                    → JSON Layer 2 guardado em output/
+        ├──► Layer2Validator              → validação estrutural Layer 2
+        ├──► IssueDetector                → issues estruturais Layer 6
+        │                                      output/issues/*.issues.json
+        └──► export_layer2_to_rdf.py      → RDF/Turtle em output/rdf/
+                                                │
+                                                ▼
+                                           SHACL / SPARQL
+                                                │
+                                                └──► issues ontológicos Layer 6
+                                                     output/issues/*.ontology.issues.json
 ```
 
 O transformer percorre a árvore **bottom-up** — os nós folha são processados primeiro, e os resultados sobem até ao topo. Isto significa que quando o transformer processa um `Node(...)`, já tem os valores dos seus argumentos resolvidos.
+
+A parte de análise foi separada do modelo: `models/layer2.py` mantém a representação Layer 2; `validation/layer2_validator.py` contém a validação estrutural; `models/layer6.py` contém a estrutura dos resultados de análise; e a pasta `issues/` contém os detectores, o catálogo externo de issues e a escrita dos resultados.
 
 ---
 
@@ -1192,24 +1208,65 @@ ACÇÕES FILHAS (26): 12 nodes standalone + 12 composable nodes
 
 O `IssueDetector` analisa o `LaunchDescription` Layer 2 e produz `Issue` conforme a especificação `layer6.pdf`. É executado automaticamente após a validação Layer 2.
 
+Na versão actual, a detecção foi separada da definição dos issues:
+
+- `issues/detector.py` detecta padrões estruturais no `LaunchDescription`;
+- `models/layer6.py` define `Issue` e `ElementRef`;
+- `issues/io.py` escreve os issues em JSON;
+- `issues/catalog.yaml` contém as definições externas dos issues.
+
+Isto evita manter severidades, categorias, descrições e recomendações hardcoded no detector. O código detecta a condição, mas a descrição formal do issue vem do catálogo YAML.
+
 ### Estrutura de um `Issue`
+
+Os issues estruturais são guardados em:
+
+```text
+output/issues/<nome>.issues.json
+```
+
+Exemplo simplificado:
 
 ```json
 {
-  "id": "issue_file_spawn_001",
-  "severity": "warning",
-  "category": "architecture",
-  "description": "Include com path dinâmico não resolvível estaticamente.",
-  "affected_entities": [
-    {"type": "include", "id": "la:file_spawn:8e31550a#0"}
-  ],
-  "analysis_tool": "ProjetoEL-extractor",
-  "analysis_timestamp": "2025-05-12T10:30:00Z",
-  "location": {"file_path": "examples/real-python/spawn_robot.launch.py"},
-  "metadata": {
-    "included_launch_id": "launch_desc_file_os_path_join_..."
-  }
+  "analysis_timestamp": "2026-05-12T16:33:05.110602Z",
+  "issue_count": 1,
+  "issues": [
+    {
+      "id": "issue_file_spawn_001",
+      "severity": "warning",
+      "category": "architecture",
+      "description": "Include com path dinâmico não resolvível estaticamente - o ficheiro incluído só é determinado em runtime.",
+      "affected_entities": [
+        {"type": "include", "id": "la:file_spawn:8e31550a#0"}
+      ],
+      "analysis_tool": "ProjetoEL-extractor",
+      "analysis_timestamp": "2026-05-12T16:33:05.110602Z",
+      "location": {"file_path": "examples/real-python/spawn_robot.launch.py"},
+      "metadata": {
+        "included_launch_id": "launch_desc_file_os_path_join_...",
+        "issue_key": "include_unresolved",
+        "title": "Include com path dinâmico",
+        "recommendation": "Resolver este include através de configuração concreta, execução instrumentada ou anotação."
+      }
+    }
+  ]
 }
+```
+
+O timestamp é comum a todos os issues gerados na mesma execução, para facilitar reprodutibilidade e comparação.
+
+### Exemplo de definição em `issues/catalog.yaml`
+
+```yaml
+include_unresolved:
+  enabled: true
+  severity: warning
+  category: architecture
+  title: "Include com path dinâmico"
+  description: "Include com path dinâmico não resolvível estaticamente - o ficheiro incluído só é determinado em runtime."
+  recommendation: "Resolver este include através de configuração concreta, execução instrumentada ou anotação."
+  entity_type: include
 ```
 
 ### Issues detectáveis no Layer 2
@@ -1290,3 +1347,204 @@ Os issues mais graves do `layer6.pdf` requerem informação de camadas superiore
 | Rate mismatch | Taxas de publicação | Layer 1/4 |
 
 Estes issues só podem ser detectados pelo HAROS após resolver o Layer 2 em instâncias concretas (Layer 3/4) e cruzar com a informação dos nodes (Layer 1).
+
+---
+
+## 16. Exportação RDF/Turtle e Issues Ontológicos
+
+Para responder à parte ontológica do projecto, o modelo Layer 2 pode ser exportado para RDF/Turtle. Esta exportação permite correr validações SHACL e queries SPARQL sobre o grafo.
+
+### Exportação RDF
+
+O script principal é:
+
+```bash
+python3 scripts/export_layer2_to_rdf.py output/robot.launch.layer2.json output/rdf/robot.launch.layer2.ttl
+```
+
+O RDF gerado representa, entre outros elementos:
+
+```text
+ros:LaunchDescription
+ros:LaunchAction
+ros:NodeAction
+ros:DeclareArgumentAction
+ros:IncludeAction
+ros:GroupAction
+ros:Parameter
+ros:Remapping
+ros:Condition
+ros:Provenance
+```
+
+Cada action recebe propriedades como:
+
+```text
+ros:hasActionId
+ros:hasPackage
+ros:hasExecutable
+ros:hasNodeName
+ros:hasNamespace
+ros:hasParameter
+ros:hasRemapping
+ros:hasCondition
+ros:hasProvenance
+```
+
+E a proveniência é exportada para o grafo com informação como:
+
+```text
+ros:hasSourceFile
+ros:hasConfidence
+```
+
+### Validação SHACL
+
+As shapes SHACL encontram-se em:
+
+```text
+ontology/shapes.ttl
+```
+
+A validação pode ser executada com:
+
+```bash
+python3 scripts/validate_all_rdf.py
+```
+
+As shapes verificam propriedades estruturais do RDF, por exemplo:
+
+```text
+LaunchDescription tem formato e launch_file_id
+NodeAction tem package e executable
+DeclareArgumentAction tem nome
+IncludeAction referencia o launch incluído
+Remapping tem origem e destino
+Parameter tem nome
+```
+
+### Queries SPARQL para issues ontológicos
+
+Além dos issues estruturais gerados directamente sobre o `LaunchDescription`, o projecto tem uma segunda backend de análise: issues detectados por queries SPARQL sobre o RDF.
+
+As queries vivem em:
+
+```text
+ontology/queries/*.rq
+```
+
+Exemplos:
+
+```text
+node_no_name.rq
+include_unresolved.rq
+arg_no_default.rq
+action_without_provenance.rq
+```
+
+O detector ontológico é:
+
+```text
+issues/ontology_detector.py
+```
+
+E pode ser executado com:
+
+```bash
+python3 scripts/run_ontology_issues.py output/rdf/robot.launch.layer2.ttl
+```
+
+O output é guardado em:
+
+```text
+output/issues/<nome>.ontology.issues.json
+```
+
+Exemplo de fluxo:
+
+```text
+output/robot.launch.layer2.json
+        │
+        ▼
+output/rdf/robot.launch.layer2.ttl
+        │
+        ▼
+SPARQL queries
+        │
+        ▼
+output/issues/robot.launch.ontology.issues.json
+```
+
+### Diferença entre issues estruturais e issues ontológicos
+
+Existem agora duas fontes de análise:
+
+| Tipo | Entrada | Motor | Output |
+|---|---|---|---|
+| Issues estruturais | `LaunchDescription` em memória | Python | `output/issues/*.issues.json` |
+| Issues ontológicos | RDF/Turtle | SPARQL via `rdflib` | `output/issues/*.ontology.issues.json` |
+
+Alguns issues aparecem nos dois lados, como `node_no_name` ou `include_unresolved`. Outros são mais naturais no modelo estrutural, como `namespace_implicit`, porque exigem raciocínio sobre escopo e herança de namespace que ainda não está totalmente materializado no RDF.
+
+---
+
+## 17. Pipeline Operacional e Demo
+
+Para automatizar a execução completa, foi criado:
+
+```text
+scripts/run_all_ontology_pipeline.py
+```
+
+Este script percorre todos os ficheiros `*.layer2.json`, gera os respectivos RDFs e corre a análise ontológica sobre cada um.
+
+```bash
+python3 scripts/run_all_ontology_pipeline.py output
+```
+
+O script faz:
+
+```text
+1. encontra todos os JSONs Layer 2
+2. exporta cada JSON para RDF/Turtle
+3. corre queries SPARQL sobre cada RDF
+4. gera issues ontológicos em JSON
+5. apresenta um resumo final
+```
+
+O `demo.sh` foi actualizado para executar a cadeia completa:
+
+```text
+1. limpeza de outputs antigos
+2. compilação Python
+3. testes Layer 2 mínimos
+4. testes de cobertura HAROS Layer 2
+5. testes nos exemplos reais Python
+6. pipeline ontológico completo
+7. validação SHACL
+8. resumo dos outputs gerados
+```
+
+A execução completa gera:
+
+```text
+12 JSONs Layer 2 dos exemplos reais
+58 JSONs Layer 2 dos testes mínimos e de cobertura
+70 RDFs Layer 2
+12 JSONs de issues estruturais
+70 JSONs de issues ontológicos
+```
+
+Com isto, a demonstração cobre a cadeia completa desde a extracção sintáctica até à análise ontológica:
+
+```text
+launch file
+  → Layer 2 JSON
+  → issues estruturais Layer 6
+  → RDF/Turtle
+  → SHACL
+  → SPARQL
+  → issues ontológicos Layer 6
+```
+
+Esta estrutura também prepara a integração com GraphDB: os ficheiros `output/rdf/*.ttl` já podem ser carregados num triplestore e as queries SPARQL em `ontology/queries/` podem ser reutilizadas sobre um endpoint SPARQL externo.
