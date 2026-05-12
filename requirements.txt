@@ -2,3 +2,4 @@ lark
 rdflib
 pyshacl
 PyYAML
+requests

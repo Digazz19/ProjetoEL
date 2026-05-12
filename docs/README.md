@@ -23,6 +23,7 @@ Este documento detalha a estratégia usada para extrair e guardar cada tipo de i
 15. [Issue Detection — Layer 6](#15-issue-detection--layer-6)
 16. [Exportação RDF/Turtle e Issues Ontológicos](#16-exportação-rdfturtle-e-issues-ontológicos)
 17. [Pipeline Operacional e Demo](#17-pipeline-operacional-e-demo)
+18. [Backend GraphDB](#18-backend-graphdb)
 
 ---
 
@@ -1548,3 +1549,181 @@ launch file
 ```
 
 Esta estrutura também prepara a integração com GraphDB: os ficheiros `output/rdf/*.ttl` já podem ser carregados num triplestore e as queries SPARQL em `ontology/queries/` podem ser reutilizadas sobre um endpoint SPARQL externo.
+
+---
+
+## 18. Backend GraphDB
+
+Depois da exportação RDF/Turtle e da execução local das queries SPARQL com `rdflib`, foi adicionada uma segunda forma de executar a análise ontológica: usando GraphDB como triplestore RDF.
+
+A motivação para esta integração é separar a análise ontológica local da análise num repositório semântico persistente. No modo local, cada ficheiro `.ttl` é carregado individualmente em memória e as queries SPARQL são executadas sobre esse grafo isolado. No modo GraphDB, todos os RDFs gerados podem ser carregados para um único repositório, permitindo queries globais sobre o conjunto completo de launch files analisados.
+
+### Fluxo de dados
+
+```text
+output/rdf/*.ttl
+        │
+        ▼
+GraphDB repository
+        │
+        ▼
+SPARQL endpoint
+        │
+        ▼
+GraphDBIssueDetector
+        │
+        ▼
+output/issues/graphdb.issues.json
+```
+
+### Scripts adicionados
+
+A integração foi feita através de scripts independentes, para não tornar a demo principal dependente de um serviço externo.
+
+```text
+scripts/graphdb_upload.py
+```
+
+Carrega um ficheiro .ttl ou todos os ficheiros .ttl de uma pasta para um repositório GraphDB.
+
+```bash
+python3 scripts/graphdb_upload.py output/rdf --repo haros
+```
+
+```text
+scripts/graphdb_query.py
+````
+
+Executa uma query SPARQL directamente no endpoint do GraphDB e imprime os resultados.
+
+```bash
+python3 scripts/graphdb_query.py ontology/queries/node_no_name.rq --repo haros
+```
+
+```text
+scripts/run_graphdb_issues.py
+```
+
+Executa as queries SPARQL configuradas, converte os resultados em Issue Layer 6 e grava o output em JSON.
+
+```bash
+python3 scripts/run_graphdb_issues.py --repo haros
+```
+
+```text
+scripts/graphdb_clear.py
+```
+
+Remove os dados do repositório, útil para evitar resultados duplicados entre execuções.
+
+```bash
+python3 scripts/graphdb_clear.py --repo haros
+```
+
+```text
+scripts/demo_graphdb.sh
+```
+
+Executa a sequência completa de limpeza, upload, query de teste e geração de issues GraphDB.
+
+```bash
+./scripts/demo_graphdb.sh haros
+```
+
+### Reutilização das queries
+
+A integração GraphDB reutiliza as mesmas queries que a análise local:
+
+```text ontology/queries/*.rq ```
+
+Isto significa que a lógica declarativa da análise não depende do motor usado. A mesma query *node_no_name.rq*, por exemplo, pode ser executada:
+
+- localmente com rdflib;
+- remotamente sobre o endpoint SPARQL do GraphDB.
+
+A diferença está apenas no backend:
+
+| Backend  | Como funciona                   | Resultado                       |
+| -------- | ------------------------------- | ------------------------------- |
+| `rdflib` | carrega um `.ttl` em memória    | issues ontológicos por ficheiro |
+| GraphDB  | consulta o repositório completo | issues ontológicos globais      |
+
+### Conversão para Issues Layer 6
+
+Os resultados devolvidos pelo GraphDB em formato SPARQL JSON são convertidos por:
+
+```text 
+issues/graphdb_detector.py
+```
+
+Este detector segue a mesma lógica do OntologyIssueDetector local:
+
+- 1.carrega a definição do issue a partir de issues/catalog.yaml;
+- 2.executa a query SPARQL correspondente;
+- 3.transforma cada linha de resultado num Issue;
+- 4.identifica a entidade afectada através de action_id;
+- 5.preserva metadados como source_file, package, executable ou included_launch_id;
+- 6.marca a origem do issue como graphdb.
+
+Exemplo de metadata:
+
+```json
+{
+  "issue_key": "node_no_name",
+  "title": "Node sem nome explícito",
+  "source": "graphdb",
+  "recommendation": "Definir explicitamente o campo name quando for importante garantir nomes estáveis."
+}
+```
+
+O ficheiro final é:
+
+```text
+output/issues/graphdb.issues.json
+```
+
+### Papel do GraphDB na arquitectura
+
+O GraphDB não substitui o Layer 2 nem o detector local. Ele acrescenta uma backend persistente para análise semântica. A pipeline passa a ter três níveis complementares de análise:
+
+```text
+1. Validação Layer 2
+   Verifica a consistência estrutural do modelo em memória.
+
+2. Issues estruturais
+   Detectam padrões directamente no LaunchDescription.
+
+3. Issues ontológicos
+   Executam queries SPARQL sobre RDF, localmente ou no GraphDB.
+```
+
+A vantagem do GraphDB é permitir análise global sobre todos os grafos RDF carregados. Isto é especialmente útil para queries que dependem de cruzar informação entre vários launch files ou para exploração interactiva no Workbench.
+
+### Limitação actual
+
+A análise GraphDB usa a ontologia Layer 2 exportada. Portanto, consegue consultar launch descriptions, actions, includes, nodes simbólicos, parâmetros, remappings, condições e proveniência.
+
+Ainda não permite, por si só, detectar comunicação ROS real como:
+
+```text
+publisher sem subscriber
+subscriber sem publisher
+node que não comunica com ninguém
+QoS incompatível
+```
+
+Essas análises exigem que a ontologia passe também a representar entidades de comunicação runtime, como:
+
+```text
+ros:Topic
+ros:Publication
+ros:Subscription
+ros:publishes
+ros:subscribes
+ros:onTopic
+ros:hasQoS
+```
+
+Assim, o GraphDB fica preparado como infraestrutura para análises mais avançadas, mas a qualidade dessas análises depende da informação exportada para o grafo.
+
+---

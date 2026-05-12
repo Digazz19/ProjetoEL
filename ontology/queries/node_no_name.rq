@@ -7,6 +7,8 @@ WHERE {
           ros:hasPackage ?package ;
           ros:hasExecutable ?executable .
 
+  FILTER(STR(?package) != "__executable__")
+
   FILTER NOT EXISTS {
     ?entity ros:hasNodeName ?name .
   }
