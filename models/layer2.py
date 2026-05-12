@@ -667,7 +667,7 @@ class LaunchDescription:
         elif isinstance(action, SetParameterAction):
             scope = f"   [{action.target_scope}]" if action.target_scope != "local" else ""
             val = action.value.display() if action.value else "—"
-            print(f"{pad}SET       {action.name} = {val}{scope}")
+            print(f"{pad}SET       {action.name} = {val}{scope}{cond}")
             print()
 
         elif isinstance(action, NodeAction):

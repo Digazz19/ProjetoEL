@@ -44,16 +44,16 @@ def _parse_condition_to_ir(condition_str: str) -> list:
 
 def _parse_var_ir(name: str) -> list:
     name = name.strip()
-    if name.isupper():
-        return ["env_get", name]
+
     if name.startswith("os.environ"):
         m = _re.search(r"['\"]([\w]+)[\'\"]", name)
         return ["env_get", m.group(1) if m else name]
+
     if "LaunchConfiguration" in name:
         m = _re.search(r"['\"]([\w]+)[\'\"]", name)
         return ["launch_arg_get", m.group(1) if m else name]
-    return ["var_get", name]
 
+    return ["var_get", name]
 
 from models.layer2 import (
     LaunchDescription,
@@ -111,6 +111,184 @@ class LaunchPythonTransformer(Transformer):
 
         return _parse_condition_to_ir(str(expr))
 
+    def _conditions_from_raw(self, raw_condition):
+        if not raw_condition:
+            return []
+
+        # Já é uma expressão IR, por exemplo:
+        # ["and", ...], ["not", ...], ["for_range", ...]
+        if isinstance(raw_condition, list) and raw_condition and isinstance(raw_condition[0], str):
+            return [raw_condition]
+
+
+        resolved = self._resolve(raw_condition)
+
+        if isinstance(resolved, dict) and resolved.get("type") == "if_condition":
+            # Prefer resolving the original predicate now, not at call-construction
+            # time. With Lark's bottom-up traversal, IfCondition(use_x) can be
+            # built before the assignment ``use_x = LaunchConfiguration(...)``
+            # has been recorded in self.variables. Delaying resolution lets us
+            # map that variable to the corresponding launch argument.
+            if "expr" in resolved:
+                return [self._condition_expr_to_ir(resolved.get("expr"))]
+            return [resolved.get("condition")]
+
+        if isinstance(resolved, dict) and resolved.get("type") == "unless_condition":
+            if "expr" in resolved:
+                return [["not", self._condition_expr_to_ir(resolved.get("expr"))]]
+            return [["not", resolved.get("condition")]]
+
+        try:
+            return [_parse_condition_to_ir(str(resolved))]
+        except Exception:
+            return [["symbolic", str(resolved)]]
+
+    def _is_condition_ir(self, value):
+        return isinstance(value, list) and value and isinstance(value[0], str)
+
+
+    def _condition_to_ir(self, condition):
+        if condition is None:
+            return None
+
+        if self._is_condition_ir(condition):
+            return condition
+
+        conds = self._conditions_from_raw(condition)
+        return conds[0] if conds else None
+
+
+    def _and_ir(self, *conditions):
+        clean = [c for c in conditions if c]
+
+        if not clean:
+            return None
+
+        result = clean[0]
+        for cond in clean[1:]:
+            result = ["and", result, cond]
+
+        return result
+
+
+    def _or_ir(self, conditions):
+        clean = [c for c in conditions if c]
+
+        if not clean:
+            return None
+
+        result = clean[0]
+        for cond in clean[1:]:
+            result = ["or", result, cond]
+
+        return result
+
+
+    def _not_ir(self, condition):
+        if not condition:
+            return None
+
+        return ["not", condition]
+
+    def _process_if_block(self, branches, outer_condition=None):
+        """
+        Processa um if/elif/else preservando a condição do ramo.
+
+        branches vem de if_stmt:
+        ("if", condition, item)
+        ("else", None, item)
+        """
+
+        outer_ir = self._condition_to_ir(outer_condition)
+        previous_branch_conditions = []
+
+        for branch_kind, raw_condition, item in branches:
+            if item is None:
+                continue
+
+            if branch_kind == "else":
+                previous_or = self._or_ir(previous_branch_conditions)
+
+                if previous_or:
+                    branch_ir = self._not_ir(previous_or)
+                else:
+                    branch_ir = ["runtime_branch", "else"]
+            else:
+                branch_ir = self._condition_to_ir(raw_condition)
+                if branch_ir:
+                    previous_branch_conditions.append(branch_ir)
+
+            active_condition = self._and_ir(outer_ir, branch_ir)
+            self._process_aux_stmt(item, active_condition)
+
+    def _process_aux_stmt(self, stmt, active_condition=None):
+        """
+        Processa statements dentro de funções auxiliares usadas por OpaqueFunction.
+        active_condition é a condição simbólica acumulada até este ponto.
+        """
+
+        if stmt is None:
+            return
+
+        if isinstance(stmt, list):
+            for sub_stmt in stmt:
+                self._process_aux_stmt(sub_stmt, active_condition)
+            return
+
+        # Casos em dict: add_action, list_append, etc.
+        if isinstance(stmt, dict):
+            if stmt.get("type") == "add_action":
+                action = self._resolve(stmt["action"])
+                if isinstance(action, dict) and action.get("type") == "node_raw":
+                    self._ld.add_action(self._make_node_action(action, active_condition))
+                return
+
+            if stmt.get("type") == "list_append":
+                value = self._resolve(stmt["item"])
+                if isinstance(value, dict) and value.get("type") == "node_raw":
+                    self._ld.add_action(self._make_node_action(value, active_condition))
+                return
+
+            return
+
+        kind = stmt[0] if isinstance(stmt, tuple) else None
+
+        if kind == "assign":
+            _, name, value = stmt
+            resolved = self._resolve(value)
+
+            if isinstance(resolved, dict) and resolved.get("type") == "node_raw":
+                self._ld.add_action(self._make_node_action(resolved, active_condition))
+            else:
+                self.variables[name] = resolved
+
+        elif kind == "for_block":
+            _, var, iterator, suite = stmt
+            self._process_for_block(var, iterator, suite, outer_condition=active_condition)
+
+        elif kind == "if_block":
+            _, branches = stmt
+            self._process_if_block(branches, outer_condition=active_condition)
+
+        elif kind == "return":
+            # Em muitos OpaqueFunction reais, os nodes já foram extraídos por list_append/add_action.
+            # Ainda assim, se o return devolver uma lista estática de actions, tentamos consumi-la.
+            resolved = self._resolve(stmt[1])
+
+            if isinstance(resolved, list):
+                patched = []
+                for action in resolved:
+                    if isinstance(action, dict) and active_condition:
+                        action = dict(action)
+                        existing = self._condition_to_ir(action.get("condition"))
+                        action["condition"] = self._and_ir(active_condition, existing)
+                    patched.append(action)
+
+                self._consume_actions(patched)
+
+            elif isinstance(resolved, dict) and resolved.get("type") == "node_raw":
+                self._ld.add_action(self._make_node_action(resolved, active_condition))
+                
     def _sub(self, value) -> LaunchSubstitution:
         """Converte um valor raw para LaunchSubstitution."""
         if isinstance(value, LaunchSubstitution):
@@ -183,22 +361,17 @@ class LaunchPythonTransformer(Transformer):
                 remaps.append(Remapping(from_topic=str(r["src"]), to_topic=self._sub(str(r["dst"]))))
 
         # Condições
-        cond_list = []
-
-        raw_condition = condition or node_data.get("condition")
-
-        if raw_condition:
-            resolved_condition = self._resolve(raw_condition)
-
-            if isinstance(resolved_condition, dict) and resolved_condition.get("type") == "if_condition":
-                cond_list = [resolved_condition.get("condition")]
-            elif isinstance(resolved_condition, dict) and resolved_condition.get("type") == "unless_condition":
-                cond_list = [["not", resolved_condition.get("condition")]]
-            else:
-                try:
-                    cond_list = [_parse_condition_to_ir(str(resolved_condition))]
-                except Exception:
-                    cond_list = [["symbolic", str(resolved_condition)]]
+        # Um node pode estar dentro de um ramo/loop condicionado e, ao mesmo
+        # tempo, ter uma condition própria no construtor ROS2. Ambas contam.
+        # A versão anterior escolhia a exterior quando existia e podia perder
+        # a condition intrínseca do node, por exemplo:
+        #   if has_resource(...):
+        #       ComposableNode(..., condition=IfCondition(use_image_view))
+        # Agora a condição efectiva fica: outer AND intrinsic.
+        outer_condition = self._condition_to_ir(condition)
+        intrinsic_condition = self._condition_to_ir(node_data.get("condition"))
+        combined_condition = self._and_ir(outer_condition, intrinsic_condition)
+        cond_list = [combined_condition] if combined_condition else []
 
         # ros_arguments — converter para LaunchSubstitution e serializar
         ros_args = []
@@ -231,7 +404,7 @@ class LaunchPythonTransformer(Transformer):
             ros_arguments=ros_args,
             launch_prefix=launch_prefix,
             conditions=cond_list,
-            provenance=self._provenance(0.9 if condition else 1.0),
+            provenance=self._provenance(0.9 if cond_list else 1.0),
         )
 
     # -----------------------------------------------------------------------
@@ -376,15 +549,22 @@ class LaunchPythonTransformer(Transformer):
 
     def if_stmt(self, items):
         results = []
+
         hdr = str(items[0])
-        condition = hdr[3:].rstrip(':').strip()
+        condition = hdr[3:].rstrip(":").strip()
+
         suite = items[1] if len(items) > 1 else []
-        for item in (suite if isinstance(suite, list) else [suite]):
-            if item is not None:
-                results.append(("if", condition, item))
+        if not isinstance(suite, list):
+            suite = [suite]
+
+        suite = [item for item in suite if item is not None]
+
+        results.append(("if", condition, suite))
+
         for clause in items[2:]:
             if isinstance(clause, list):
                 results.extend(clause)
+
         return ("if_block", results)
 
     def for_stmt(self, items):
@@ -400,21 +580,25 @@ class LaunchPythonTransformer(Transformer):
 
     def elif_clause(self, items):
         hdr = str(items[0])
-        condition = hdr[5:].rstrip(':').strip()
+        condition = hdr[5:].rstrip(":").strip()
+
         suite = items[1] if len(items) > 1 else []
-        results = []
-        for item in (suite if isinstance(suite, list) else [suite]):
-            if item is not None:
-                results.append(("if", condition, item))
-        return results
+        if not isinstance(suite, list):
+            suite = [suite]
+
+        suite = [item for item in suite if item is not None]
+
+        return [("if", condition, suite)]
 
     def else_clause(self, items):
         suite = items[0] if items else []
-        results = []
-        for item in (suite if isinstance(suite, list) else [suite]):
-            if item is not None:
-                results.append(("else", None, item))
-        return results
+
+        if not isinstance(suite, list):
+            suite = [suite]
+
+        suite = [item for item in suite if item is not None]
+
+        return [("else", None, suite)]
 
     def launch_description(self, items):
         if not items:
@@ -536,7 +720,7 @@ class LaunchPythonTransformer(Transformer):
             if isinstance(choices_resolved, (list, tuple)):
                 choices_resolved = [str(c) for c in choices_resolved]
             return {"type": "arg", "name": name, "default": self._resolve(default),
-                    "description": self._resolve(desc), "choices": choices_resolved}
+                    "description": self._resolve(desc), "choices": choices_resolved, "condition": kwargs.get("condition"),}
 
         if short == "IncludeLaunchDescription":
             source_value = args[0] if args else kwargs.get("launch_description_source")
@@ -548,6 +732,7 @@ class LaunchPythonTransformer(Transformer):
                 "type": "include",
                 "file": source_value,
                 "args": launch_args,
+                "condition": kwargs.get("condition"),
             }
             
         if short == "LaunchDescription":
@@ -562,7 +747,7 @@ class LaunchPythonTransformer(Transformer):
 
         if short == "PushRosNamespace":
             ns = self._resolve(args[0]) if args else self._resolve(kwargs.get("namespace"))
-            return {"type": "push_namespace", "namespace": ns}
+            return {"type": "push_namespace", "namespace": ns, "condition": kwargs.get("condition"),}
 
         if short == "OpaqueFunction":
             func = kwargs.get("function")
@@ -572,13 +757,13 @@ class LaunchPythonTransformer(Transformer):
                 func_name = func.get("name")
             else:
                 func_name = str(func) if func else None
-            return {"type": "opaque_function", "function": func_name, "args": func_args}
+            return {"type": "opaque_function", "function": func_name, "args": func_args, "condition": kwargs.get("condition"),}
 
         if short == "GroupAction":
             children = self._resolve(args[0]) if args else self._resolve(kwargs.get("actions", []))
             if not isinstance(children, list):
                 children = [children] if children else []
-            return {"type": "group_action", "children": children}
+            return {"type": "group_action", "children": children, "condition": kwargs.get("condition"),}
 
         if short == "ComposableNode":
             # ComposableNode usa plugin em vez de executable
@@ -599,6 +784,7 @@ class LaunchPythonTransformer(Transformer):
                 "arguments": None,
                 "launch_prefix": None,
                 "is_composable": True,
+                "condition": kwargs.get("condition"),
             }
 
         if short == "LoadComposableNodes":
@@ -616,6 +802,7 @@ class LaunchPythonTransformer(Transformer):
                 "type": "load_composable_nodes",
                 "target_container": target,
                 "composable_nodes": nodes,
+                "condition": kwargs.get("condition"),
             }
 
         if short == "ComposableNodeContainer":
@@ -631,7 +818,8 @@ class LaunchPythonTransformer(Transformer):
                 "executable": exe,
                 "name": name,
                 "namespace": ns,
-                "composable_nodes_ref": nodes_raw,  # resolver em _consume_actions
+                "composable_nodes_ref": nodes_raw,
+                "condition": kwargs.get("condition"),
             }
 
         if short == "SetParameter":
@@ -643,23 +831,34 @@ class LaunchPythonTransformer(Transformer):
                 "name": name,
                 "value": value,
                 "target_scope": "local",
+                "condition": kwargs.get("condition"),
             }
         
         if short == "SetEnvironmentVariable":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
             value = self._resolve(args[1]) if len(args) > 1 else self._resolve(kwargs.get("value"))
-            return {"type": "set_env", "name": name, "value": value}
-
+            return {
+                "type": "set_env",
+                "name": name,
+                "value": value,
+                "condition": kwargs.get("condition"),
+            }
+        
         if short == "UnsetEnvironmentVariable":
             name = self._resolve(args[0]) if args else self._resolve(kwargs.get("name"))
-            return {"type": "unset_env", "name": name}
-
+            return {
+                "type": "unset_env",
+                "name": name,
+                "condition": kwargs.get("condition"),
+            }
+        
         if short == "ExecuteProcess":
             return {
                 "type": "executable",
                 "cmd": self._resolve(kwargs.get("cmd", args[0] if args else None)),
                 "cwd": self._resolve(kwargs.get("cwd")),
                 "env": [],
+                "condition": kwargs.get("condition"),
             }
 
         if short in {"PythonLaunchDescriptionSource", "XMLLaunchDescriptionSource", "YAMLLaunchDescriptionSource"}:
@@ -667,16 +866,18 @@ class LaunchPythonTransformer(Transformer):
             return {"type": "launch_source", "source_type": short, "path": path_value}
 
         if short == "IfCondition":
-            expr = self._resolve(args[0]) if args else self._resolve(kwargs.get("predicate"))
+            expr = args[0] if args else kwargs.get("predicate")
             return {
                 "type": "if_condition",
+                "expr": expr,
                 "condition": self._condition_expr_to_ir(expr),
             }
 
         if short == "UnlessCondition":
-            expr = self._resolve(args[0]) if args else self._resolve(kwargs.get("predicate"))
+            expr = args[0] if args else kwargs.get("predicate")
             return {
                 "type": "unless_condition",
+                "expr": expr,
                 "condition": self._condition_expr_to_ir(expr),
             }
         
@@ -792,8 +993,7 @@ class LaunchPythonTransformer(Transformer):
                     self.variables[name] = resolved
             elif kind == "if_block":
                 _, branches = stmt
-                for branch_kind, condition, item in branches:
-                    self._process_if_item(item, condition)
+                self._process_if_block(branches)
             elif kind == "for_block":
                 # for loops no corpo principal — ignorar (dinâmicos)
                 pass
@@ -816,115 +1016,87 @@ class LaunchPythonTransformer(Transformer):
                         self.variables[target].append(item)
 
     def _process_if_item(self, item, condition):
-        if item is None:
-            return
-        kind = item[0] if isinstance(item, tuple) else None
-        if kind == "assign":
-            _, name, value = item
-            resolved = self._resolve(value)
-            if isinstance(resolved, dict) and resolved.get("type") == "node_raw":
-                action = self._make_node_action(resolved, condition)
-                self._ld.add_action(action)
-            elif isinstance(resolved, dict) and resolved.get("type") == "launch_description":
-                for a in resolved.get("actions", []):
-                    if isinstance(a, dict) and a.get("type") == "node_raw":
-                        self._ld.add_action(self._make_node_action(a, condition))
-            else:
-                self.variables[name] = resolved
-        elif kind == "return":
-            self._consume_return(item[1])
-        elif kind == "if_block":
-            _, branches = item
-            for branch_kind, nested_cond, nested_item in branches:
-                combined = f"({condition}) and ({nested_cond})" if nested_cond else condition
-                self._process_if_item(nested_item, combined)
+        active_condition = self._condition_to_ir(condition)
+        self._process_aux_stmt(item, active_condition)
 
-    def _consume_aux_function(self, func_name: str):
-        """Analisa o corpo de uma função auxiliar e extrai acções simbólicas."""
+    def _consume_aux_function(self, func_name: str, outer_condition=None):
+        """
+        Analisa o corpo de uma função auxiliar usada por OpaqueFunction.
+
+        Não executa Python arbitrário.
+        Faz uma interpretação estática simbólica de padrões reconhecidos:
+        - if/else
+        - for
+        - list_append
+        - add_action
+        - assignments simples
+        """
+
         body = self._aux_functions.get(func_name, [])
-        for stmt in body:
-            if stmt is None:
-                continue
-            kind = stmt[0] if isinstance(stmt, tuple) else None
-            if kind == "for_block":
-                _, var, iterator, suite = stmt
-                self._process_for_block(var, iterator, suite)
-            elif kind == "if_block":
-                _, branches = stmt
-                for branch_kind, condition, item in branches:
-                    if item is None:
-                        continue
-                    # Processar cada item dentro do if/else
-                    item_kind = item[0] if isinstance(item, tuple) else None
-                    if item_kind == "for_block":
-                        _, var, iterator, suite = item
-                        self._process_for_block(var, iterator, suite)
-                    else:
-                        self._process_if_item(item, condition)
-            elif kind == "assign":
-                _, name, value = stmt
-                self.variables[name] = self._resolve(value)
-            elif isinstance(stmt, dict) and stmt.get("type") == "add_action":
-                action = self._resolve(stmt["action"])
-                if isinstance(action, dict) and action.get("type") == "node_raw":
-                    self._ld.add_action(self._make_node_action(action))
+        active_condition = self._condition_to_ir(outer_condition)
 
-    def _process_for_block(self, var: str, iterator: str, suite: list):
-        """Processa um for loop — extrai nodes com condição for_range simbólica."""
+        for stmt in body:
+            self._process_aux_stmt(stmt, active_condition)
+
+    def _process_for_block(self, var: str, iterator: str, suite: list, outer_condition=None):
+        """
+        Processa um for loop e extrai nodes com condição simbólica estruturada.
+
+        Exemplo:
+        for i in range(0, N)
+
+        Produz:
+        ["for_range", "i", ["launch_arg_get", "num_node_pairs"]]
+        quando consegue mapear N para um LaunchConfiguration.
+        """
+
         import re
-        # Tentar extrair o range do iterador: range(N), range(0, N), etc.
+
+        outer_ir = self._condition_to_ir(outer_condition)
+
         range_var = None
-        m = re.match(r"range\s*\(\s*(?:0\s*,\s*)?(.+?)\s*\)", iterator)
+        raw_n = None
+
+        # Tentar extrair range(N), range(0, N), range(1, N), etc.
+        m = re.match(r"range\s*\(\s*(?:(.+?)\s*,\s*)?(.+?)\s*\)", str(iterator))
         if m:
-            raw_n = m.group(1).strip()
-            # Resolver o nome da variável
+            start_expr = m.group(1)
+            raw_n = m.group(2).strip()
+
             if raw_n.isidentifier():
                 resolved = self._resolve({"type": "var", "name": raw_n})
+
                 if isinstance(resolved, dict) and resolved.get("type") == "launch_config":
                     range_var = resolved.get("name", raw_n)
+
                 elif isinstance(resolved, dict) and resolved.get("type") == "var":
                     range_var = resolved.get("name", raw_n)
+
                 elif isinstance(resolved, str) and not resolved.startswith("int("):
                     range_var = resolved
+
                 else:
-                    # Tentar encontrar o arg correspondente nas variables
-                    # ex: N = int(N_lc.perform(...)) onde N_lc = LaunchConfiguration('num_node_pairs')
+                    # Caso típico:
+                    # N_lc = LaunchConfiguration("num_node_pairs")
+                    # N = int(N_lc.perform(context))
+                    # for i in range(0, N)
                     for vname, vval in self.variables.items():
                         if isinstance(vval, dict) and vval.get("type") == "launch_config":
                             range_var = vval.get("name", vname)
                             break
+
                     if not range_var:
                         range_var = raw_n
 
-        # Condição simbólica limpa para os nodes extraídos
         if range_var:
-            loop_condition = f"for {var} in range($(arg {range_var}))"
+            loop_ir = ["for_range", var, ["launch_arg_get", range_var]]
         else:
-            loop_condition = f"for {var} in {iterator}"
+            loop_ir = ["for_each", var, str(iterator)]
 
-        # Processar os statements do corpo do loop
+        active_condition = self._and_ir(outer_ir, loop_ir)
+
         for stmt in suite:
-            if stmt is None:
-                continue
-            kind = stmt[0] if isinstance(stmt, tuple) else None
-            if kind == "assign":
-                _, name, value = stmt
-                resolved = self._resolve(value)
-                if isinstance(resolved, dict) and resolved.get("type") == "node_raw":
-                    self._ld.add_action(self._make_node_action(resolved, loop_condition))
-            elif isinstance(stmt, dict) and stmt.get("type") == "add_action":
-                action = self._resolve(stmt["action"])
-                if isinstance(action, dict) and action.get("type") == "node_raw":
-                    self._ld.add_action(self._make_node_action(action, loop_condition))
-            elif isinstance(stmt, dict) and stmt.get("type") == "list_append":
-                value = self._resolve(stmt["item"])
-                if isinstance(value, dict) and value.get("type") == "node_raw":
-                    self._ld.add_action(self._make_node_action(value, loop_condition))
-            elif kind == "if_block":
-                _, branches = stmt
-                for branch_kind, condition, item in branches:
-                    combined = f"({loop_condition}) and ({condition})" if condition else loop_condition
-                    self._process_if_item(item, combined)
+            self._process_aux_stmt(stmt, active_condition)
 
     def _consume_return(self, value):
         resolved = self._resolve(value)
@@ -972,6 +1144,8 @@ class LaunchPythonTransformer(Transformer):
                     default = action.get("default")
                     desc = action.get("description")
                     choices = action.get("choices")
+                    conditions = self._conditions_from_raw(action.get("condition"))
+
                     self._ld.add_action(DeclareArgumentAction(
                         id=self._id_gen.generate(f"arg_{name}"),
                         action_type=ActionType.DECLARE_ARGUMENT,
@@ -979,58 +1153,87 @@ class LaunchPythonTransformer(Transformer):
                         default_value=self._sub(default) if default is not None else None,
                         description=str(desc) if desc else None,
                         choices=choices if isinstance(choices, list) else None,
-                        provenance=self._provenance(),
+                        conditions=conditions,
+                        provenance=self._provenance(0.9 if conditions else 1.0),
                     ))
 
                 elif t == "include":
                     file_value = self._resolve(action.get("file"))
                     if isinstance(file_value, dict) and file_value.get("type") == "launch_source":
                         file_value = file_value.get("path")
+
                     file_str = str(file_value) if file_value else "unknown"
                     included_id = ActionIDGenerator.file_id_from_path(file_str)
+
                     arg_mappings = {}
                     for arg in action.get("args", []):
                         if isinstance(arg, dict) and arg.get("name"):
                             arg_mappings[arg["name"]] = self._sub(arg.get("value") or arg.get("default"))
+
+                    conditions = self._conditions_from_raw(action.get("condition"))
+
                     self._ld.add_action(IncludeAction(
                         id=self._id_gen.generate(f"include_{included_id}"),
                         action_type=ActionType.INCLUDE,
                         included_launch_id=f"launch_desc_{included_id}",
                         argument_mappings=arg_mappings,
-                        provenance=self._provenance(),
+                        conditions=conditions,
+                        provenance=self._provenance(0.9 if conditions else 1.0),
                     ))
 
                 elif t == "group_action":
                     children_items = action.get("children", [])
                     if not isinstance(children_items, list):
                         children_items = []
+
+                    conditions = self._conditions_from_raw(action.get("condition"))
+
                     # Criar o GroupAction primeiro
                     group = GroupAction(
                         id=self._id_gen.generate("group_action"),
                         action_type=ActionType.GROUP,
-                        provenance=self._provenance(0.9),
+                        conditions=conditions,
+                        provenance=self._provenance(0.9 if conditions else 1.0),
                     )
                     self._ld.add_action(group)
+
                     # Processar os filhos e capturar os seus IDs
                     prev_seq = list(self._ld.launch_sequence)
                     self._consume_actions(children_items)
                     new_ids = [aid for aid in self._ld.launch_sequence if aid not in prev_seq]
+
                     # Remover filhos da sequência principal e atribuir ao grupo
                     for aid in new_ids:
                         self._ld.launch_sequence.remove(aid)
+
                     group.children = new_ids
 
                 elif t == "opaque_function":
                     func_name = action.get("function")
+                    opaque_condition = self._condition_to_ir(action.get("condition"))
+
                     if func_name and func_name in self._aux_functions:
-                        # Analisar a função auxiliar simbolicamente
-                        self._consume_aux_function(func_name)
+                        self._consume_aux_function(func_name, outer_condition=opaque_condition)
 
                 elif t == "load_composable_nodes":
-                    # Processar os composable nodes directamente
+                    # Processar os composable nodes directamente.
+                    # Como LoadComposableNodes não está modelado como action própria,
+                    # propagamos a condição para os composable nodes extraídos.
                     composable_nodes = action.get("composable_nodes", [])
                     if not isinstance(composable_nodes, list):
                         composable_nodes = [composable_nodes] if composable_nodes else []
+
+                    load_condition = self._condition_to_ir(action.get("condition"))
+                    if load_condition:
+                        patched_nodes = []
+                        for node in composable_nodes:
+                            if isinstance(node, dict):
+                                node = dict(node)
+                                existing = self._condition_to_ir(node.get("condition"))
+                                node["condition"] = self._and_ir(load_condition, existing)
+                            patched_nodes.append(node)
+                        composable_nodes = patched_nodes
+
                     if composable_nodes:
                         self._consume_actions(composable_nodes)
 
@@ -1040,6 +1243,8 @@ class LaunchPythonTransformer(Transformer):
                     exe = action.get("executable")
                     name = action.get("name")
                     ns = action.get("namespace")
+                    condition = action.get("condition")
+
                     if pkg and exe:
                         container_node = {
                             "type": "node_raw",
@@ -1051,30 +1256,50 @@ class LaunchPythonTransformer(Transformer):
                             "remappings": [],
                             "arguments": None,
                             "launch_prefix": None,
+                            "condition": condition,
                         }
                         self._ld.add_action(self._make_node_action(container_node))
+
                     # Resolver a referência aos composable nodes agora que as variables estão populadas
                     nodes_ref = action.get("composable_nodes_ref", [])
                     composable_nodes = self._resolve(nodes_ref)
+
                     if isinstance(composable_nodes, dict) and composable_nodes.get("type") == "var":
                         composable_nodes = self.variables.get(composable_nodes["name"], [])
+
                     if not isinstance(composable_nodes, list):
                         composable_nodes = [composable_nodes] if composable_nodes else []
+
                     if composable_nodes:
+                        container_condition_ir = self._condition_to_ir(condition)
+                        if container_condition_ir:
+                            patched_nodes = []
+                            for node in composable_nodes:
+                                if isinstance(node, dict):
+                                    node = dict(node)
+                                    existing = self._condition_to_ir(node.get("condition"))
+                                    node["condition"] = self._and_ir(container_condition_ir, existing)
+                                patched_nodes.append(node)
+                            composable_nodes = patched_nodes
+
                         self._consume_actions(composable_nodes)
 
                 elif t == "push_namespace":
                     ns = action.get("namespace")
+                    conditions = self._conditions_from_raw(action.get("condition"))
+
                     self._ld.add_action(PushNamespaceAction(
                         id=self._id_gen.generate(f"push_ns_{ns}"),
                         action_type=ActionType.PUSH_NAMESPACE,
                         namespace=self._sub(ns),
-                        provenance=self._provenance(),
+                        conditions=conditions,
+                        provenance=self._provenance(0.9 if conditions else 1.0),
                     ))
 
                 elif t == "set_parameter":
                     name = action.get("name", "")
                     value = action.get("value")
+                    conditions = self._conditions_from_raw(action.get("condition"))
 
                     self._ld.add_action(SetParameterAction(
                         id=self._id_gen.generate(f"set_param_{name}"),
@@ -1082,26 +1307,33 @@ class LaunchPythonTransformer(Transformer):
                         name=str(name) if name else "",
                         value=self._sub(value),
                         target_scope=action.get("target_scope", "local"),
-                        provenance=self._provenance(),
+                        conditions=conditions,
+                        provenance=self._provenance(0.9 if conditions else 1.0),
                     ))
 
                 elif t == "set_env":
+                    conditions = self._conditions_from_raw(action.get("condition"))
+
                     self._ld.add_action(SetParameterAction(
                         id=self._id_gen.generate(f"set_env_{action.get('name','')}"),
                         action_type=ActionType.SET_PARAMETER,
                         name=str(action.get("name", "")),
                         value=self._sub(action.get("value")),
                         target_scope="global",
-                        provenance=self._provenance(),
+                        conditions=conditions,
+                        provenance=self._provenance(0.9 if conditions else 1.0),
                     ))
 
                 elif t == "executable":
                     # ExecuteProcess modelado como NodeAction especial
                     cmd = action.get("cmd")
+                    conditions = self._conditions_from_raw(action.get("condition"))
+
                     self._ld.add_action(NodeAction(
                         id=self._id_gen.generate(f"exec_{cmd}"),
                         action_type=ActionType.NODE,
                         package=LaunchSubstitution.literal("__executable__"),
                         executable=LaunchSubstitution.literal(str(cmd)),
-                        provenance=self._provenance(),
+                        conditions=conditions,
+                        provenance=self._provenance(0.9 if conditions else 1.0),
                     ))

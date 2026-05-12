@@ -421,8 +421,11 @@ Quando um `GroupAction` tem namespace, este é guardado no campo `namespace` do 
 As condições são guardadas como **árvores S-expression**:
 
 ```python
-# if ROS_DISTRO == 'humble':
+# if os.environ['ROS_DISTRO'] == 'humble':
 [["eq", ["env_get", "ROS_DISTRO"], "humble"]]
+
+# if ROS_DISTRO == 'humble':
+[["eq", ["var_get", "ROS_DISTRO"], "humble"]]
 
 # IfCondition(LaunchConfiguration('use_sim'))
 [["eq", ["launch_arg_get", "use_sim"], "true"]]
@@ -468,10 +471,14 @@ def _parse_condition_to_ir(s):
     return ["truthy", _parse_var_ir(s)]
 
 def _parse_var_ir(name):
-    if name.isupper(): return ["env_get", name]
-    if "LaunchConfiguration" in name: return ["launch_arg_get", extracted_name]
+    if name.startswith("os.environ"):
+        return ["env_get", extracted_name]
+    if "LaunchConfiguration" in name:
+        return ["launch_arg_get", extracted_name]
     return ["var_get", name]
 ```
+
+Nota: nomes em maiúsculas já não são automaticamente tratados como variáveis de ambiente. Isto evita classificar variáveis locais como `N`, `NUM_NODES` ou `ROS_DISTRO` como environment variables sem evidência explícita. Para obter `env_get`, a condição tem de usar `os.environ[...]` em Python ou `$(env ...)` em XML/YAML.
 
 ### Condições em XML (`if`/`unless`)
 
@@ -490,33 +497,72 @@ def _parse_launch_condition_to_ir(s):
     return ["truthy", ["var_get", s]]
 ```
 
-### Condições de `_pending_condition`
+Em XML e YAML, as condições são processadas transversalmente por `_conditions_for_item`. Isto significa que `if` e `unless` podem ser associados a várias `LaunchAction`, não apenas a `NodeAction`.
 
-Quando um `ComposableNode` está dentro de um `if has_resource(...)`:
+Actions atualmente cobertas:
+
+```text
+DeclareArgumentAction
+SetParameterAction
+IncludeAction
+PushNamespaceAction
+GroupAction
+NodeAction
+```
+
+Exemplo:
+
+```xml
+<include file="sensors.launch.xml" if="$(var use_sensors)"/>
+<group unless="$(var disable_navigation)">
+    <node pkg="nav2" exec="controller"/>
+</group>
+```
+
+No caso dos grupos, a condição fica guardada no próprio GroupAction. Os filhos não recebem uma cópia dessa condição, porque a hierarquia Layer 2 já indica que eles pertencem ao grupo condicionado.
+
+---
+
+### Combinação de condições exteriores e intrínsecas
+
+Uma action pode ter dois tipos de condição ao mesmo tempo:
+
+1. uma condição exterior, por estar dentro de um `if`, `for`, `OpaqueFunction` ou outro contexto condicionado;
+2. uma condição intrínseca, definida diretamente na action, por exemplo `condition=IfCondition(...)`.
+
+Exemplo:
 
 ```python
 if has_resource('packages', 'image_view'):
-    composable_nodes.append(ComposableNode(package='image_view', ...))
+    composable_nodes.append(
+        ComposableNode(
+            package='image_view',
+            plugin='image_view::ImageViewNode',
+            condition=IfCondition(use_image_view)
+        )
+    )
 ```
 
-O `_process_if_item` detecta o `list_append` dentro do `if` e marca o node com `_pending_condition`:
+Neste caso, o node só deve existir se as duas condições forem verdadeiras:
 
 ```python
-elif isinstance(item, dict) and item.get("type") == "list_append":
-    value = self._resolve(item["item"])
-    if isinstance(value, dict) and value.get("type") == "node_raw":
-        value = dict(value)
-        value["_pending_condition"] = condition  # ← marca com a condição
-    self.variables[target].append(value)
+[
+  "and",
+  ["truthy", ["var_get", "has_resource('packages', 'image_view')"]],
+  ["eq", ["launch_arg_get", "use_image_view"], "true"]
+]
 ```
 
-Quando o node é processado em `_make_node_action`, a condição pendente é aplicada:
+A combinação é feita em *_make_node_action*:
 
 ```python
-pending = node_data.get("_pending_condition")
-if pending:
-    condition = f"({condition}) and ({pending})" if condition else pending
+outer_condition = self._condition_to_ir(condition)
+intrinsic_condition = self._condition_to_ir(node_data.get("condition"))
+combined_condition = self._and_ir(outer_condition, intrinsic_condition)
+cond_list = [combined_condition] if combined_condition else []
 ```
+
+Isto evita perder a condição própria do node quando ele também aparece dentro de um ramo condicionado.
 
 ---
 
@@ -825,7 +871,7 @@ Actualmente só `file_path` é populado — os números de linha não são extra
 |-------|----------|
 | `1.0` | Node literal sem condições |
 | `0.95` | `LaunchDescription` XML/YAML |
-| `0.9` | Node dentro de `if` |
+| `0.9` | Action condicionada ou extraída com alguma incerteza simbólica |
 | `0.85` | `LaunchDescription` Python |
 | `0.8` | Arg extraído como "órfão" (não adicionado explicitamente ao `ld`) |
 
@@ -1019,7 +1065,7 @@ A lista `actions=` contém já os dicts processados:
 
 **Passo 3 — Condição do `GroupAction`**
 
-O `condition=IfCondition(use_composition)` é processado pelo `_condition_expr_to_ir` e guardado no `group_action`:
+O `condition=IfCondition(use_composition)` é preservado no `group_action` e, ao criar o `GroupAction` Layer 2, é convertido para IR e guardado no campo `conditions` do próprio grupo.
 
 ```python
 # Grupo 1:
@@ -1038,7 +1084,8 @@ elif t == "group_action":
     group = GroupAction(
         id=self._id_gen.generate("group_action"),
         action_type=ActionType.GROUP,
-        provenance=self._provenance(0.9),
+        conditions=cond_list,
+        provenance=self._provenance(0.9 if cond_list else 1.0),
     )
     self._ld.add_action(group)   # ← grupo vai para a sequência
 

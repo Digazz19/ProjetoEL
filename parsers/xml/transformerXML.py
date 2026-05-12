@@ -94,6 +94,20 @@ class LaunchXMLTransformer(Transformer):
             return LaunchSubstitution.file_path(m.group(1), m.group(2))
         return LaunchSubstitution.literal(s)
 
+    def _conditions_for_item(self, item, inherited=None):
+        cond_list = list(inherited or [])
+
+        if not isinstance(item, dict):
+            return cond_list
+
+        if item.get("if"):
+            cond_list.append(_parse_launch_condition_to_ir(item["if"]))
+
+        if item.get("unless"):
+            cond_list.append(["not", _parse_launch_condition_to_ir(item["unless"])])
+
+        return cond_list
+
     def start(self, items):
         return items[0]
 
@@ -116,16 +130,20 @@ class LaunchXMLTransformer(Transformer):
     def _process_item(self, ld, item, conditions=None):
         if item is None:
             return
+
         if isinstance(item, list):
             for sub in item:
                 self._process_item(ld, sub, conditions)
             return
+
         if not isinstance(item, dict):
             return
+
         t = item.get("type")
+        item_conditions = self._conditions_for_item(item, conditions)
 
         if t == "node":
-            ld.add_action(self._make_node_action(item, conditions))
+            ld.add_action(self._make_node_action(item, item_conditions))
 
         elif t == "arg":
             ld.add_action(DeclareArgumentAction(
@@ -134,7 +152,8 @@ class LaunchXMLTransformer(Transformer):
                 name=item.get("name", ""),
                 default_value=self._sub(item.get("default")) if item.get("default") is not None else None,
                 description=item.get("description"),
-                provenance=self._provenance(),
+                conditions=item_conditions,
+                provenance=self._provenance(0.9 if item_conditions else 1.0),
             ))
 
         elif t == "let":
@@ -144,7 +163,8 @@ class LaunchXMLTransformer(Transformer):
                 name=item.get("name", ""),
                 value=self._sub(item.get("value")),
                 target_scope="local",
-                provenance=self._provenance(),
+                conditions=item_conditions,
+                provenance=self._provenance(0.9 if item_conditions else 1.0),
             ))
 
         elif t == "set_env":
@@ -154,7 +174,8 @@ class LaunchXMLTransformer(Transformer):
                 name=item.get("name", ""),
                 value=self._sub(item.get("value")),
                 target_scope="global",
-                provenance=self._provenance(),
+                conditions=item_conditions,
+                provenance=self._provenance(0.9 if item_conditions else 1.0),
             ))
 
         elif t == "set_parameter":
@@ -167,7 +188,8 @@ class LaunchXMLTransformer(Transformer):
                 name=str(name) if name else "",
                 value=self._sub(value),
                 target_scope=item.get("target_scope", "local"),
-                provenance=self._provenance(),
+                conditions=item_conditions,
+                provenance=self._provenance(0.9 if item_conditions else 1.0),
             )
             ld.add_action(action)
 
@@ -178,13 +200,14 @@ class LaunchXMLTransformer(Transformer):
                 for arg in item.get("args", [])
                 if isinstance(arg, dict) and arg.get("name")
             }
+
             ld.add_action(IncludeAction(
                 id=self._id_gen.generate(f"include_{included_id}"),
                 action_type=ActionType.INCLUDE,
                 included_launch_id=f"launch_desc_{included_id}",
                 argument_mappings=arg_mappings,
-                conditions=conditions or [],
-                provenance=self._provenance(),
+                conditions=item_conditions,
+                provenance=self._provenance(0.9 if item_conditions else 1.0),
             ))
 
         elif t == "push_namespace":
@@ -193,8 +216,8 @@ class LaunchXMLTransformer(Transformer):
                 id=self._id_gen.generate(f"push_ns_{ns}"),
                 action_type=ActionType.PUSH_NAMESPACE,
                 namespace=self._sub(ns) if ns else None,
-                conditions=conditions or [],
-                provenance=self._provenance(),
+                conditions=item_conditions,
+                provenance=self._provenance(0.9 if item_conditions else 1.0),
             )
             ld.add_action(action)
 
@@ -204,20 +227,27 @@ class LaunchXMLTransformer(Transformer):
                 id=group_id,
                 action_type=ActionType.GROUP,
                 namespace=self._sub(item.get("namespace")) if item.get("namespace") else None,
-                conditions=conditions or [],
-                provenance=self._provenance(),
+                conditions=item_conditions,
+                provenance=self._provenance(0.9 if item_conditions else 1.0),
             )
             ld.add_action(group)
+
             child_ids = []
             for child in item.get("children", []):
                 prev_seq = list(ld.launch_sequence)
+
+                # Não propagamos item_conditions para os filhos.
+                # A condição pertence ao GroupAction, e os filhos ficam dentro dele.
                 self._process_item(ld, child, conditions)
+
                 new_ids = [aid for aid in ld.launch_sequence if aid not in prev_seq]
                 child_ids.extend(new_ids)
+
                 for aid in new_ids:
                     ld.launch_sequence.remove(aid)
-            group.children = child_ids
 
+            group.children = child_ids
+            
     def _make_node_action(self, item, conditions=None):
         pkg = item.get("package") or item.get("pkg")
         exe = item.get("exec") or item.get("executable")
@@ -228,13 +258,9 @@ class LaunchXMLTransformer(Transformer):
             Remapping(from_topic=r.get("from", ""), to_topic=self._sub(r.get("to", "")))
             for r in item.get("remaps", []) if isinstance(r, dict)
         ]
+        
         cond_list = list(conditions or [])
 
-        if item.get("if"):
-            cond_list.append(_parse_launch_condition_to_ir(item["if"]))
-
-        if item.get("unless"):
-            cond_list.append(["not", _parse_launch_condition_to_ir(item["unless"])])
         return NodeAction(
             id=self._id_gen.generate(f"Node(pkg={pkg},exec={exe},name={name})"),
             action_type=ActionType.NODE,
@@ -281,7 +307,13 @@ class LaunchXMLTransformer(Transformer):
 
     def let(self, items):
         attrs = dict(items)
-        return {"type": "let", "name": attrs.get("name"), "value": attrs.get("value")}
+        return {
+            "type": "let",
+            "name": attrs.get("name"),
+            "value": attrs.get("value"),
+            "if": attrs.get("if"),
+            "unless": attrs.get("unless"),
+        }
 
     def executable(self, items):
         attrs = {}; envs = []
@@ -296,7 +328,13 @@ class LaunchXMLTransformer(Transformer):
 
     def set_env(self, items):
         attrs = dict(items)
-        return {"type": "set_env", "name": attrs.get("name"), "value": attrs.get("value")}
+        return {
+            "type": "set_env",
+            "name": attrs.get("name"),
+            "value": attrs.get("value"),
+            "if": attrs.get("if"),
+            "unless": attrs.get("unless"),
+        }
 
     def set_parameter(self, items):
         attrs = dict([i for i in items if isinstance(i, tuple)])
@@ -305,6 +343,8 @@ class LaunchXMLTransformer(Transformer):
             "name": attrs.get("name"),
             "value": attrs.get("value"),
             "target_scope": attrs.get("target_scope", "local"),
+            "if": attrs.get("if"),
+            "unless": attrs.get("unless"),
         }
 
     def unset_env(self, items):
@@ -316,8 +356,14 @@ class LaunchXMLTransformer(Transformer):
         for item in items:
             if isinstance(item, dict) and item.get("type") == "arg": args.append(item)
             elif isinstance(item, tuple): attrs[item[0]] = item[1]
-        return {"type": "include", "file": attrs.get("file"), "args": args}
-
+        return {
+            "type": "include",
+            "file": attrs.get("file"),
+            "args": args,
+            "if": attrs.get("if"),
+            "unless": attrs.get("unless"),
+        }
+    
     def arg(self, items):
         attrs = dict(items)
         return {"type": "arg", "name": attrs.get("name"), "default": attrs.get("default"),
@@ -325,14 +371,32 @@ class LaunchXMLTransformer(Transformer):
 
     def push_ros_namespace(self, items):
         attrs = dict(items)
-        return {"type": "push_namespace", "namespace": attrs.get("namespace")}
-
+        return {
+            "type": "push_namespace",
+            "namespace": attrs.get("namespace"),
+            "if": attrs.get("if"),
+            "unless": attrs.get("unless"),
+        }
+    
     def group(self, items):
+        attrs = {}
         children = []
+
         for item in items:
-            if isinstance(item, list): children.extend(item)
-            elif item is not None: children.append(item)
-        return {"type": "group", "children": children}
+            if isinstance(item, tuple):
+                attrs[item[0]] = item[1]
+            elif isinstance(item, list):
+                children.extend(item)
+            elif item is not None:
+                children.append(item)
+
+        return {
+            "type": "group",
+            "children": children,
+            "namespace": attrs.get("namespace"),
+            "if": attrs.get("if"),
+            "unless": attrs.get("unless"),
+        }
 
     def attribute(self, items):
         key = str(items[0])
