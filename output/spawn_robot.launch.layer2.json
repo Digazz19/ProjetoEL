@@ -10,7 +10,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "name": "world",
@@ -27,7 +27,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "name": "model",
@@ -44,7 +44,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "name": "x",
@@ -61,7 +61,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "name": "y",
@@ -78,7 +78,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "name": "yaw",
@@ -95,7 +95,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "name": "use_sim_time",
@@ -112,7 +112,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "included_launch_id": "launch_desc_file_os_path_join___type____var____name____pkg_bme_ros2_navigation_____launch____world_launch_py__"
@@ -124,7 +124,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "package": {
@@ -163,7 +163,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "package": {
@@ -193,7 +193,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "package": {
@@ -225,7 +225,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "package": {
@@ -258,7 +258,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "package": {
@@ -307,7 +307,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "package": {
@@ -336,7 +336,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/spawn_robot.launch.py"
+          "file_path": "examples/real-python/spawn_robot.launch.py"
         }
       },
       "package": {
@@ -379,7 +379,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/spawn_robot.launch.py"
+      "file_path": "examples/real-python/spawn_robot.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

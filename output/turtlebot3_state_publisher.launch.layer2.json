@@ -10,7 +10,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/turtlebot3_state_publisher.launch.py"
+          "file_path": "examples/real-python/turtlebot3_state_publisher.launch.py"
         }
       },
       "name": "use_sim_time",
@@ -27,7 +27,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/turtlebot3_state_publisher.launch.py"
+          "file_path": "examples/real-python/turtlebot3_state_publisher.launch.py"
         }
       },
       "package": {
@@ -59,7 +59,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/turtlebot3_state_publisher.launch.py"
+      "file_path": "examples/real-python/turtlebot3_state_publisher.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

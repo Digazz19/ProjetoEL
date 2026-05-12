@@ -10,7 +10,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "RCUTILS_LOGGING_BUFFERED_STREAM",
@@ -27,7 +27,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "namespace",
@@ -44,7 +44,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "use_sim_time",
@@ -61,7 +61,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "params_file",
@@ -78,7 +78,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "autostart",
@@ -95,7 +95,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "graph",
@@ -112,7 +112,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "use_composition",
@@ -129,7 +129,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "use_intra_process_comms",
@@ -146,7 +146,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "container_name",
@@ -163,7 +163,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "use_respawn",
@@ -180,7 +180,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "log_level",
@@ -197,7 +197,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "use_keepout_zones",
@@ -214,7 +214,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "name": "use_speed_zones",
@@ -227,14 +227,24 @@
     "la:file_examples_real_python_navigation_launch_py:bc727501#0": {
       "id": "la:file_examples_real_python_navigation_launch_py:bc727501#0",
       "action_type": "group",
+      "conditions": [
+        [
+          "truthy",
+          [
+            "var_get",
+            "PythonExpression(['not ', {'type': 'var', 'name': 'use_composition'}])"
+          ]
+        ]
+      ],
       "provenance": {
         "extraction_method": "static_analysis",
         "confidence": 0.9,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "children": [
+        "la:file_examples_real_python_navigation_launch_py:331a7223#0",
         "la:file_examples_real_python_navigation_launch_py:39752fd4#0",
         "la:file_examples_real_python_navigation_launch_py:45841de3#0",
         "la:file_examples_real_python_navigation_launch_py:755c4767#0",
@@ -249,6 +259,23 @@
         "la:file_examples_real_python_navigation_launch_py:d58c6630#0"
       ]
     },
+    "la:file_examples_real_python_navigation_launch_py:331a7223#0": {
+      "id": "la:file_examples_real_python_navigation_launch_py:331a7223#0",
+      "action_type": "set_parameter",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file_path": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_sim_time",
+      "value": {
+        "type": "literal",
+        "value": "LaunchConfigAsBool('use_sim_time')"
+      },
+      "target_scope": "local"
+    },
     "la:file_examples_real_python_navigation_launch_py:39752fd4#0": {
       "id": "la:file_examples_real_python_navigation_launch_py:39752fd4#0",
       "action_type": "node",
@@ -256,7 +283,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -289,7 +316,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -333,7 +360,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -377,7 +404,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -427,7 +454,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -464,7 +491,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -508,7 +535,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -552,7 +579,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -589,7 +616,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -633,7 +660,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -677,7 +704,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -721,7 +748,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -755,14 +782,24 @@
     "la:file_examples_real_python_navigation_launch_py:bc727501#1": {
       "id": "la:file_examples_real_python_navigation_launch_py:bc727501#1",
       "action_type": "group",
+      "conditions": [
+        [
+          "truthy",
+          [
+            "var_get",
+            "LaunchConfigAsBool('use_composition')"
+          ]
+        ]
+      ],
       "provenance": {
         "extraction_method": "static_analysis",
         "confidence": 0.9,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "children": [
+        "la:file_examples_real_python_navigation_launch_py:331a7223#1",
         "la:file_examples_real_python_navigation_launch_py:f953b15d#0",
         "la:file_examples_real_python_navigation_launch_py:0f2580b9#0",
         "la:file_examples_real_python_navigation_launch_py:68bb5708#0",
@@ -777,6 +814,23 @@
         "la:file_examples_real_python_navigation_launch_py:4e0c9132#0"
       ]
     },
+    "la:file_examples_real_python_navigation_launch_py:331a7223#1": {
+      "id": "la:file_examples_real_python_navigation_launch_py:331a7223#1",
+      "action_type": "set_parameter",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 1.0,
+        "source_location": {
+          "file_path": "examples/real-python/navigation_launch.py"
+        }
+      },
+      "name": "use_sim_time",
+      "value": {
+        "type": "literal",
+        "value": "LaunchConfigAsBool('use_sim_time')"
+      },
+      "target_scope": "local"
+    },
     "la:file_examples_real_python_navigation_launch_py:f953b15d#0": {
       "id": "la:file_examples_real_python_navigation_launch_py:f953b15d#0",
       "action_type": "node",
@@ -784,7 +838,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -816,7 +870,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -855,7 +909,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -894,7 +948,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -939,7 +993,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -971,7 +1025,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -1010,7 +1064,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -1049,7 +1103,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -1081,7 +1135,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -1120,7 +1174,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -1159,7 +1213,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -1198,7 +1252,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/navigation_launch.py"
+          "file_path": "examples/real-python/navigation_launch.py"
         }
       },
       "package": {
@@ -1246,7 +1300,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/navigation_launch.py"
+      "file_path": "examples/real-python/navigation_launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

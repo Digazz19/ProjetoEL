@@ -3,6 +3,54 @@
   "launch_file_id": "file_examples_real_python_camera_launch_py",
   "format": "python",
   "actions": {
+    "la:file_examples_real_python_camera_launch_py:6f803cf6#0": {
+      "id": "la:file_examples_real_python_camera_launch_py:6f803cf6#0",
+      "action_type": "node",
+      "conditions": [
+        [
+          "and",
+          [
+            "truthy",
+            [
+              "var_get",
+              "has_resource('packages', 'image_view')"
+            ]
+          ],
+          [
+            "eq",
+            [
+              "launch_arg_get",
+              "use_image_view"
+            ],
+            "true"
+          ]
+        ]
+      ],
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 0.9,
+        "source_location": {
+          "file_path": "examples/real-python/camera.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "image_view"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "image_view::ImageViewNode"
+      },
+      "remappings": [
+        {
+          "from": "/image",
+          "to": {
+            "type": "literal",
+            "value": "/camera/image_raw"
+          }
+        }
+      ]
+    },
     "la:file_examples_real_python_camera_launch_py:66b370eb#0": {
       "id": "la:file_examples_real_python_camera_launch_py:66b370eb#0",
       "action_type": "declare_argument",
@@ -10,7 +58,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/camera.launch.py"
+          "file_path": "examples/real-python/camera.launch.py"
         }
       },
       "name": "camera",
@@ -27,7 +75,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/camera.launch.py"
+          "file_path": "examples/real-python/camera.launch.py"
         }
       },
       "name": "format",
@@ -44,7 +92,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/camera.launch.py"
+          "file_path": "examples/real-python/camera.launch.py"
         }
       },
       "name": "use_image_view",
@@ -61,7 +109,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/camera.launch.py"
+          "file_path": "examples/real-python/camera.launch.py"
         }
       },
       "name": "width",
@@ -78,7 +126,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/camera.launch.py"
+          "file_path": "examples/real-python/camera.launch.py"
         }
       },
       "name": "height",
@@ -95,7 +143,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/camera.launch.py"
+          "file_path": "examples/real-python/camera.launch.py"
         }
       },
       "package": {
@@ -118,7 +166,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/camera.launch.py"
+          "file_path": "examples/real-python/camera.launch.py"
         }
       },
       "package": {
@@ -156,6 +204,7 @@
     }
   },
   "launch_sequence": [
+    "la:file_examples_real_python_camera_launch_py:6f803cf6#0",
     "la:file_examples_real_python_camera_launch_py:66b370eb#0",
     "la:file_examples_real_python_camera_launch_py:57082737#0",
     "la:file_examples_real_python_camera_launch_py:818d293e#0",
@@ -168,7 +217,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/camera.launch.py"
+      "file_path": "examples/real-python/camera.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

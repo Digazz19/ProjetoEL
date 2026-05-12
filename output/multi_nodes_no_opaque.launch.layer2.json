@@ -10,7 +10,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/multi_nodes_no_opaque.launch.py"
+          "file_path": "examples/real-python/multi_nodes_no_opaque.launch.py"
         }
       },
       "name": "num_node_pairs",
@@ -27,7 +27,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/multi_nodes_no_opaque.launch.py"
+      "file_path": "examples/real-python/multi_nodes_no_opaque.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

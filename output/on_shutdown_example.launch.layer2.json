@@ -10,7 +10,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/on_shutdown_example.launch.py"
+          "file_path": "examples/real-python/on_shutdown_example.launch.py"
         }
       },
       "package": {
@@ -33,7 +33,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/on_shutdown_example.launch.py"
+          "file_path": "examples/real-python/on_shutdown_example.launch.py"
         }
       },
       "package": {
@@ -54,7 +54,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/on_shutdown_example.launch.py"
+      "file_path": "examples/real-python/on_shutdown_example.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

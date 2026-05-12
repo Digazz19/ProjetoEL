@@ -2,6 +2,9 @@
 __pycache__/
 *.pyc
 venv/
-output/
-*.layer2.json
-output/**/*.ttl
+
+# Outputs gerados pelos testes
+output/layer2-tests/
+
+# RDF gerado automaticamente
+output/rdf/

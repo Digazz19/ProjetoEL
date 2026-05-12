@@ -10,7 +10,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/topic_params.launch.py"
+          "file_path": "examples/real-python/topic_params.launch.py"
         }
       },
       "package": {
@@ -42,7 +42,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/topic_params.launch.py"
+          "file_path": "examples/real-python/topic_params.launch.py"
         }
       },
       "package": {
@@ -65,7 +65,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/topic_params.launch.py"
+          "file_path": "examples/real-python/topic_params.launch.py"
         }
       },
       "included_launch_id": "launch_desc_file___os_path_join__get_package_share_directory___parameters_example_cpp________launch________launch_param_example_launch_py__"
@@ -80,7 +80,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/topic_params.launch.py"
+      "file_path": "examples/real-python/topic_params.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

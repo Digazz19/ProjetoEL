@@ -10,7 +10,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "name": "use_sim_time",
@@ -28,7 +28,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "name": "usb_port",
@@ -46,7 +46,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "name": "tb3_param_dir",
@@ -64,7 +64,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "name": "namespace",
@@ -82,7 +82,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "namespace": {
@@ -99,7 +99,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "included_launch_id": "launch_desc_file___ThisLaunchFileDir_______turtlebot3_state_publisher_launch_py__"
@@ -111,7 +111,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "included_launch_id": "launch_desc_file____type____launch_config____name____lidar_pkg_dir____default____os_path_join__get_package_share_directory___hls_lfcd_lds_driver________launch_________single_lidar_node_launch_py__"
@@ -123,7 +123,7 @@
         "extraction_method": "static_analysis",
         "confidence": 1.0,
         "source_location": {
-          "file": "examples/real-python/robot.launch.py"
+          "file_path": "examples/real-python/robot.launch.py"
         }
       },
       "package": {
@@ -169,7 +169,12 @@
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/robot.launch.py"
+      "file_path": "examples/real-python/robot.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }

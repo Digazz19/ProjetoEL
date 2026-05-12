@@ -2,13 +2,155 @@
   "id": "launch_desc_file_examples_real_python_opaque_multi_nodes_inplace_launch_py",
   "launch_file_id": "file_examples_real_python_opaque_multi_nodes_inplace_launch_py",
   "format": "python",
-  "actions": {},
-  "launch_sequence": [],
+  "actions": {
+    "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:dfad7485#0": {
+      "id": "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:dfad7485#0",
+      "action_type": "node",
+      "conditions": [
+        [
+          "and",
+          [
+            "not",
+            [
+              "or",
+              [
+                "lt",
+                [
+                  "var_get",
+                  "N"
+                ],
+                "1"
+              ],
+              [
+                "gt",
+                [
+                  "var_get",
+                  "N"
+                ],
+                "5"
+              ]
+            ]
+          ],
+          [
+            "for_range",
+            "i",
+            [
+              "launch_arg_get",
+              "num_node_pairs"
+            ]
+          ]
+        ]
+      ],
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 0.9,
+        "source_location": {
+          "file_path": "examples/real-python/opaque_multi_nodes_inplace.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "demo_nodes_cpp"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "talker"
+      },
+      "namespace": {
+        "type": "literal",
+        "value": "\"ns{i}"
+      }
+    },
+    "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:467117aa#0": {
+      "id": "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:467117aa#0",
+      "action_type": "node",
+      "conditions": [
+        [
+          "and",
+          [
+            "not",
+            [
+              "or",
+              [
+                "lt",
+                [
+                  "var_get",
+                  "N"
+                ],
+                "1"
+              ],
+              [
+                "gt",
+                [
+                  "var_get",
+                  "N"
+                ],
+                "5"
+              ]
+            ]
+          ],
+          [
+            "for_range",
+            "i",
+            [
+              "launch_arg_get",
+              "num_node_pairs"
+            ]
+          ]
+        ]
+      ],
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 0.9,
+        "source_location": {
+          "file_path": "examples/real-python/opaque_multi_nodes_inplace.launch.py"
+        }
+      },
+      "package": {
+        "type": "literal",
+        "value": "demo_nodes_cpp"
+      },
+      "executable": {
+        "type": "literal",
+        "value": "listener"
+      },
+      "namespace": {
+        "type": "literal",
+        "value": "\"ns{i}"
+      }
+    },
+    "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:48c98c74#0": {
+      "id": "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:48c98c74#0",
+      "action_type": "declare_argument",
+      "provenance": {
+        "extraction_method": "static_analysis",
+        "confidence": 0.8,
+        "source_location": {
+          "file_path": "examples/real-python/opaque_multi_nodes_inplace.launch.py"
+        }
+      },
+      "name": "num_node_pairs",
+      "default_value": {
+        "type": "literal",
+        "value": "1"
+      }
+    }
+  },
+  "launch_sequence": [
+    "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:dfad7485#0",
+    "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:467117aa#0",
+    "la:file_examples_real_python_opaque_multi_nodes_inplace_launch_py:48c98c74#0"
+  ],
   "provenance": {
     "extraction_method": "static_analysis",
     "confidence": 0.85,
     "source_location": {
-      "file": "examples/real-python/opaque_multi_nodes_inplace.launch.py"
+      "file_path": "examples/real-python/opaque_multi_nodes_inplace.launch.py"
+    },
+    "extractor_version": "ProjetoEL-2026",
+    "extraction_context": {
+      "parser": "lark",
+      "format": "py"
     }
   }
 }
