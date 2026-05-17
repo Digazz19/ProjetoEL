@@ -1,0 +1,74 @@
+# Interface conhecida/anotada dos nós individuais usados por robot.launch.py.
+#
+# Este ficheiro NÃO representa diretamente a arquitetura final.
+# Representa conhecimento externo sobre a interface dos nós individuais:
+# tópicos que cada executável publica/subscreve por defeito.
+#
+# A arquitetura runtime final é construída cruzando:
+#   1. os NodeAction extraídos do launch file no Layer 2;
+#   2. esta interface individual dos nodes;
+#   3. remaps e namespaces definidos no launch file.
+#
+# Como não foi possível executar ROS2 neste ambiente, esta interface é uma
+# anotação manual parcialmente validada por documentação. Os campos marcados
+# como "requires_runtime_validation" devem ser confirmados futuramente com:
+#   ros2 node info <node>
+#   ros2 topic info -v <topic>
+# ou por análise estática do código fonte do package.
+
+architecture_id: robot_runtime_architecture
+configuration_id: default
+
+source:
+  kind: manual_node_interface_annotation
+  validation_status: partially_validated
+  note: >
+    Interface anotada manualmente a partir de documentação TurtleBot3 e
+    conhecimento externo sobre o node. Não foi validada por execução runtime.
+
+nodes:
+  - selector:
+      package: turtlebot3_node
+      executable: turtlebot3_ros
+
+    runtime_name: /turtlebot3_ros
+
+    source:
+      kind: documentation_and_manual_annotation
+      validation_status: partially_validated
+      references:
+        - "ROBOTIS e-Manual TurtleBot3 Bringup"
+        - "ROBOTIS e-Manual TurtleBot3 Basic Examples"
+        - "ROS Index turtlebot3_node"
+
+    publishes:
+      - topic: /odom
+        msg_type: nav_msgs/msg/Odometry
+        evidence: "O package turtlebot3_node é descrito como incluindo odometry; o tópico concreto /odom deve ser confirmado por runtime/código."
+        validation_status: requires_runtime_validation
+        qos:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+      - topic: /tf
+        msg_type: tf2_msgs/msg/TFMessage
+        evidence: "A documentação TurtleBot3 indica que o TurtleBot3 Node publica dados de transformação tf."
+        validation_status: documented
+        qos:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+    subscribes:
+      - topic: /cmd_vel
+        msg_type: geometry_msgs/msg/Twist
+        evidence: "A documentação TurtleBot3 indica que o TurtleBot3 Node executa movimentos com base em cmd_vel. Em Jazzy, o tipo pode ser TwistStamped."
+        validation_status: documented_version_dependent
+        qos:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10

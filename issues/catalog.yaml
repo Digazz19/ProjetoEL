@@ -71,7 +71,7 @@ issues:
     recommendation: "Manter se for intencional; caso contrário, definir namespace explicitamente."
     entity_type: node
 
-    action_without_provenance:
+  action_without_provenance:
     enabled: true
     severity: warning
     category: architecture

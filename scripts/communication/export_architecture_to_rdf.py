@@ -11,7 +11,7 @@ from urllib.parse import quote
 from rdflib import Graph, Literal, Namespace, RDF, RDFS, URIRef, XSD
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 ROS = Namespace("http://example.org/ros-launch#")

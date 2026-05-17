@@ -8,6 +8,22 @@ from pathlib import Path
 import requests
 
 
+def collect_ttl_files(input_path: Path) -> list[Path]:
+    """
+    Recolhe ficheiros Turtle.
+
+    Se input_path for ficheiro, carrega só esse ficheiro.
+    Se for pasta, procura recursivamente por *.ttl, incluindo subpastas
+    como output/rdf/architecture/.
+    """
+    if input_path.is_file():
+        if input_path.suffix != ".ttl":
+            return []
+        return [input_path]
+
+    return sorted(input_path.rglob("*.ttl"))
+
+
 def upload_ttl(endpoint: str, ttl_path: Path, graph_uri: str | None = None) -> None:
     params = {}
 
@@ -30,6 +46,16 @@ def upload_ttl(endpoint: str, ttl_path: Path, graph_uri: str | None = None) -> N
             f"Falha no upload de {ttl_path}: "
             f"{response.status_code} {response.text[:500]}"
         )
+
+
+def graph_uri_for_file(ttl_path: Path) -> str:
+    """
+    URI estável para named graph, caso --named-graphs seja usado.
+    Inclui o path relativo normalizado para evitar colisões entre ficheiros
+    com o mesmo nome em pastas diferentes.
+    """
+    safe_name = str(ttl_path).replace("/", "__").replace("\\", "__")
+    return f"http://example.org/ros-launch/graph/{safe_name}"
 
 
 def main() -> int:
@@ -64,11 +90,7 @@ def main() -> int:
         raise FileNotFoundError(input_path)
 
     endpoint = f"{args.base_url.rstrip('/')}/repositories/{args.repo}/statements"
-
-    if input_path.is_dir():
-        ttl_files = sorted(input_path.glob("*.ttl"))
-    else:
-        ttl_files = [input_path]
+    ttl_files = collect_ttl_files(input_path)
 
     if not ttl_files:
         print(f"[AVISO] Nenhum .ttl encontrado em {input_path}")
@@ -78,7 +100,7 @@ def main() -> int:
         graph_uri = None
 
         if args.named_graphs:
-            graph_uri = f"http://example.org/ros-launch/graph/{ttl.stem}"
+            graph_uri = graph_uri_for_file(ttl)
 
         print(f"[UPLOAD] {ttl}")
         upload_ttl(endpoint, ttl, graph_uri=graph_uri)

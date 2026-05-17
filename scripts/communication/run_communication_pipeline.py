@@ -8,13 +8,13 @@ import os
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from issues.io import write_issues_json
 from issues.ontology_detector import OntologyIssueDetector
-from scripts.build_runtime_architecture import build_architecture
-from scripts.export_architecture_to_rdf import architecture_json_to_graph
+from scripts.communication.build_runtime_architecture import build_architecture
+from scripts.communication.export_architecture_to_rdf import architecture_json_to_graph
 
 
 COMMUNICATION_QUERY_KEYS = [
@@ -39,11 +39,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Pipeline completa de comunicação: "
-            "Layer 2 JSON + anotações YAML -> RuntimeArchitecture -> RDF -> Issues."
+            "Layer 2 JSON + interfaces YAML dos nós -> RuntimeArchitecture -> RDF -> Issues."
         )
     )
     parser.add_argument("layer2_json")
-    parser.add_argument("annotations_yaml")
+    parser.add_argument("node_interfaces_yaml")
     parser.add_argument(
         "--architecture-output",
         help="Output JSON da RuntimeArchitecture.",
@@ -60,14 +60,14 @@ def main() -> int:
     args = parser.parse_args()
 
     layer2_path = Path(args.layer2_json)
-    annotations_path = Path(args.annotations_yaml)
+    node_interfaces_path = Path(args.node_interfaces_yaml)
 
     if not layer2_path.exists():
         print(f"[ERRO] Layer 2 JSON não encontrado: {layer2_path}")
         return 1
 
-    if not annotations_path.exists():
-        print(f"[ERRO] Anotações não encontradas: {annotations_path}")
+    if not node_interfaces_path.exists():
+        print(f"[ERRO] Interface YAML dos nós não encontrada: {node_interfaces_path}")
         return 1
 
     stem = stem_from_layer2(layer2_path)
@@ -91,7 +91,7 @@ def main() -> int:
     # 1. Build RuntimeArchitecture JSON
     # ------------------------------------------------------------------
 
-    architecture = build_architecture(layer2_path, annotations_path)
+    architecture = build_architecture(layer2_path, node_interfaces_path)
 
     architecture_output.parent.mkdir(parents=True, exist_ok=True)
 

@@ -149,3 +149,128 @@ ros:hasSourceFile a owl:DatatypeProperty ;
 ros:hasConfidence a owl:DatatypeProperty ;
     rdfs:domain ros:Provenance ;
     rdfs:range xsd:decimal .
+
+#################################################################
+# Runtime communication architecture
+#################################################################
+
+ros:RuntimeArchitecture a owl:Class .
+ros:RuntimeNode a owl:Class .
+ros:Topic a owl:Class .
+ros:Publication a owl:Class .
+ros:Subscription a owl:Class .
+ros:QoSProfile a owl:Class .
+
+#################################################################
+# RuntimeArchitecture properties
+#################################################################
+
+ros:hasArchitectureId a owl:DatatypeProperty ;
+    rdfs:domain ros:RuntimeArchitecture ;
+    rdfs:range xsd:string .
+
+ros:hasConfigurationId a owl:DatatypeProperty ;
+    rdfs:domain ros:RuntimeArchitecture ;
+    rdfs:range xsd:string .
+
+ros:hasSourceLayer2Path a owl:DatatypeProperty ;
+    rdfs:domain ros:RuntimeArchitecture ;
+    rdfs:range xsd:string .
+
+ros:hasSourceLaunchDescriptionId a owl:DatatypeProperty ;
+    rdfs:domain ros:RuntimeArchitecture ;
+    rdfs:range xsd:string .
+
+ros:hasRuntimeNode a owl:ObjectProperty ;
+    rdfs:domain ros:RuntimeArchitecture ;
+    rdfs:range ros:RuntimeNode .
+
+ros:hasTopic a owl:ObjectProperty ;
+    rdfs:domain ros:RuntimeArchitecture ;
+    rdfs:range ros:Topic .
+
+ros:hasPublication a owl:ObjectProperty ;
+    rdfs:range ros:Publication .
+
+ros:hasSubscription a owl:ObjectProperty ;
+    rdfs:range ros:Subscription .
+
+#################################################################
+# RuntimeNode properties
+#################################################################
+
+ros:hasRuntimeNodeId a owl:DatatypeProperty ;
+    rdfs:domain ros:RuntimeNode ;
+    rdfs:range xsd:string .
+
+ros:hasRuntimeName a owl:DatatypeProperty ;
+    rdfs:domain ros:RuntimeNode ;
+    rdfs:range xsd:string .
+
+ros:hasSourceLayer2Id a owl:DatatypeProperty ;
+    rdfs:domain ros:RuntimeNode ;
+    rdfs:range xsd:string .
+
+ros:publishes a owl:ObjectProperty ;
+    rdfs:domain ros:RuntimeNode ;
+    rdfs:range ros:Publication .
+
+ros:subscribes a owl:ObjectProperty ;
+    rdfs:domain ros:RuntimeNode ;
+    rdfs:range ros:Subscription .
+
+#################################################################
+# Topic / Publication / Subscription properties
+#################################################################
+
+ros:hasPublisher a owl:ObjectProperty ;
+    rdfs:domain ros:Publication ;
+    rdfs:range ros:RuntimeNode .
+
+ros:hasSubscriber a owl:ObjectProperty ;
+    rdfs:domain ros:Subscription ;
+    rdfs:range ros:RuntimeNode .
+
+ros:onTopic a owl:ObjectProperty ;
+    rdfs:range ros:Topic .
+
+ros:hasTopicId a owl:DatatypeProperty ;
+    rdfs:domain ros:Topic ;
+    rdfs:range xsd:string .
+
+ros:hasTopicName a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+ros:hasMessageType a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+ros:hasPublicationId a owl:DatatypeProperty ;
+    rdfs:domain ros:Publication ;
+    rdfs:range xsd:string .
+
+ros:hasSubscriptionId a owl:DatatypeProperty ;
+    rdfs:domain ros:Subscription ;
+    rdfs:range xsd:string .
+
+#################################################################
+# QoS properties
+#################################################################
+
+ros:hasQoS a owl:ObjectProperty ;
+    rdfs:range ros:QoSProfile .
+
+ros:qosReliability a owl:DatatypeProperty ;
+    rdfs:domain ros:QoSProfile ;
+    rdfs:range xsd:string .
+
+ros:qosDurability a owl:DatatypeProperty ;
+    rdfs:domain ros:QoSProfile ;
+    rdfs:range xsd:string .
+
+ros:qosHistory a owl:DatatypeProperty ;
+    rdfs:domain ros:QoSProfile ;
+    rdfs:range xsd:string .
+
+ros:qosDepth a owl:DatatypeProperty ;
+    rdfs:domain ros:QoSProfile ;
+    rdfs:range xsd:integer .

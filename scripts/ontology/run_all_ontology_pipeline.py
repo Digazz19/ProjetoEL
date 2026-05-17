@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = PROJECT_ROOT / "output"
 RDF_DIR = OUTPUT_DIR / "rdf"
 
@@ -17,10 +17,10 @@ def find_layer2_jsons(root: Path) -> list[Path]:
     files = []
 
     for path in root.rglob("*.layer2.json"):
-        # Evitar outputs que não fazem parte da entrada do pipeline.
         parts = set(path.parts)
 
-        if "rdf" in parts or "issues" in parts:
+        # Evitar outputs que não fazem parte da entrada do pipeline.
+        if "rdf" in parts or "issues" in parts or "architecture" in parts:
             continue
 
         files.append(path)
@@ -50,7 +50,27 @@ def make_stem(json_path: Path, root: Path) -> str:
 
 
 def run_command(cmd: list[str]) -> None:
-    subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
+    subprocess.run(
+        cmd,
+        cwd=str(PROJECT_ROOT),
+        check=True,
+        text=True,
+    )
+
+
+def run_command_capture(cmd: list[str]) -> str:
+    result = subprocess.run(
+        cmd,
+        cwd=str(PROJECT_ROOT),
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    if result.stderr:
+        print(result.stderr.rstrip(), file=sys.stderr)
+
+    return result.stdout
 
 
 def main() -> int:
@@ -86,26 +106,21 @@ def main() -> int:
 
         run_command([
             sys.executable,
-            "scripts/export_layer2_to_rdf.py",
-            str(json_path.relative_to(PROJECT_ROOT)),
-            str(rdf_path.relative_to(PROJECT_ROOT)),
+            str(PROJECT_ROOT / "scripts" / "ontology" / "export_layer2_to_rdf.py"),
+            str(json_path),
+            str(rdf_path),
         ])
 
-        result = subprocess.run(
-            [
-                sys.executable,
-                "scripts/run_ontology_issues.py",
-                str(rdf_path.relative_to(PROJECT_ROOT)),
-            ],
-            cwd=PROJECT_ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        stdout = run_command_capture([
+            sys.executable,
+            str(PROJECT_ROOT / "scripts" / "ontology" / "run_ontology_issues.py"),
+            str(rdf_path),
+        ])
 
-        print(result.stdout.rstrip())
+        if stdout:
+            print(stdout.rstrip())
 
-        for line in result.stdout.splitlines():
+        for line in stdout.splitlines():
             if line.startswith("[OK] Issues ontológicos:"):
                 total_ontology_issues += int(line.split(":")[-1].strip())
 

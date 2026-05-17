@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.runtime_architecture import (
@@ -95,6 +95,162 @@ def node_action_fields(action: dict) -> dict:
         "namespace": lit_value(action.get("namespace")),
     }
 
+def normalize_namespace(namespace: Optional[str]) -> str:
+    """
+    Normaliza namespace para forma absoluta sem trailing slash.
+    Se for simbólico, não tenta aplicar porque depende de runtime.
+    """
+    if not namespace:
+        return ""
+
+    ns = str(namespace).strip()
+
+    if not ns or ns == "/":
+        return ""
+
+    # Namespace simbólico, por exemplo $(arg namespace).
+    # Não é seguro materializar topic names com isto.
+    if "$(" in ns:
+        return ""
+
+    if not ns.startswith("/"):
+        ns = "/" + ns
+
+    return ns.rstrip("/")
+
+
+def resolve_topic_name(topic_name: str, namespace: Optional[str] = None) -> str:
+    """
+    Resolve um nome de tópico para nome absoluto simples.
+
+    - /scan fica /scan
+    - scan fica /scan
+    - scan com namespace /robot fica /robot/scan
+    """
+    topic = str(topic_name).strip()
+
+    if not topic:
+        return "/"
+
+    if topic.startswith("/"):
+        return "/" + topic.strip("/")
+
+    ns = normalize_namespace(namespace)
+
+    if ns:
+        return f"{ns}/{topic.strip('/')}"
+
+    return f"/{topic.strip('/')}"
+
+
+def remap_from_to(remap: dict) -> tuple[Optional[str], Optional[str]]:
+    """
+    Extrai origem/destino de um remap Layer 2.
+    Suporta vários nomes possíveis porque o JSON pode vir de parsers diferentes.
+    """
+    src = (
+        remap.get("from")
+        or remap.get("from_topic")
+        or remap.get("src")
+    )
+
+    dst = (
+        remap.get("to")
+        or remap.get("to_topic")
+        or remap.get("dst")
+    )
+
+    src_value = lit_value(src)
+    dst_value = lit_value(dst)
+
+    return src_value, dst_value
+
+
+def get_node_remaps(action: dict) -> list[tuple[str, str]]:
+    remaps = []
+
+    for remap in action.get("remappings", []) or []:
+        if not isinstance(remap, dict):
+            continue
+
+        src, dst = remap_from_to(remap)
+
+        if src and dst:
+            remaps.append((src, dst))
+
+    return remaps
+
+
+def topic_matches(interface_topic: str, remap_source: str) -> bool:
+    """
+    Verifica se um tópico da interface do node corresponde à origem do remap.
+
+    Exemplo:
+      /cmd_vel corresponde a cmd_vel
+      cmd_vel corresponde a /cmd_vel
+    """
+    a = str(interface_topic).strip()
+    b = str(remap_source).strip()
+
+    if a == b:
+        return True
+
+    return resolve_topic_name(a) == resolve_topic_name(b)
+
+
+def apply_remaps_to_topic(
+    topic_name: str,
+    action: dict,
+    namespace: Optional[str],
+) -> tuple[str, bool, Optional[str], Optional[str]]:
+    """
+    Aplica remaps do NodeAction ao tópico declarado na interface YAML.
+
+    Retorna:
+      final_topic, remap_applied, remap_source, remap_target
+    """
+    for src, dst in get_node_remaps(action):
+        if topic_matches(topic_name, src):
+            return resolve_topic_name(dst, namespace), True, src, dst
+
+    return resolve_topic_name(topic_name, namespace), False, None, None
+
+
+def resolve_endpoint_topic(
+    architecture: RuntimeArchitecture,
+    endpoint: dict,
+    action: dict,
+    namespace: Optional[str],
+    runtime_name: str,
+) -> dict:
+    """
+    Recebe um endpoint do YAML e devolve uma cópia com o tópico final
+    após aplicação de remaps/namespaces do launch file.
+    """
+    if "topic" not in endpoint:
+        architecture.warnings.append(
+            f"Endpoint sem campo 'topic' no node {runtime_name}: {endpoint}"
+        )
+        return endpoint
+
+    original_topic = endpoint["topic"]
+
+    final_topic, applied, src, dst = apply_remaps_to_topic(
+        original_topic,
+        action,
+        namespace,
+    )
+
+    resolved = dict(endpoint)
+    resolved["topic"] = final_topic
+
+    if applied:
+        architecture.warnings.append(
+            f"Remap aplicado no node {runtime_name}: {src} -> {dst} "
+            f"(interface: {original_topic}, final: {final_topic})"
+        )
+
+    return resolved
 
 def selector_matches(action: dict, selector: dict) -> bool:
     fields = node_action_fields(action)
@@ -217,18 +373,18 @@ def add_subscription(
     )
 
 
-def build_architecture(layer2_path: Path, annotations_path: Path) -> RuntimeArchitecture:
+def build_architecture(layer2_path: Path, node_interfaces_path: Path) -> RuntimeArchitecture:
     layer2 = load_json(layer2_path)
-    annotations = load_yaml(annotations_path)
+    node_interfaces = load_yaml(node_interfaces_path)
 
     architecture = RuntimeArchitecture(
-        id=annotations.get("architecture_id") or f"architecture:{layer2.get('launch_file_id')}",
-        configuration_id=annotations.get("configuration_id", "default"),
+        id=node_interfaces.get("architecture_id") or f"architecture:{layer2.get('launch_file_id')}",
+        configuration_id=node_interfaces.get("configuration_id", "default"),
         source_layer2_path=str(layer2_path),
         source_launch_description_id=layer2.get("id"),
     )
 
-    for node_ann in annotations.get("nodes", []) or []:
+    for node_ann in node_interfaces.get("nodes", []) or []:
         selector = node_ann.get("selector") or {}
 
         action_id, action, warnings = find_node_action(layer2, selector)
@@ -262,10 +418,24 @@ def build_architecture(layer2_path: Path, annotations_path: Path) -> RuntimeArch
         )
 
         for pub in node_ann.get("publishes", []) or []:
-            add_publication(architecture, nid, pub)
+            resolved_pub = resolve_endpoint_topic(
+                architecture=architecture,
+                endpoint=pub,
+                action=action,
+                namespace=namespace,
+                runtime_name=runtime_name,
+            )
+            add_publication(architecture, nid, resolved_pub)
 
         for sub in node_ann.get("subscribes", []) or []:
-            add_subscription(architecture, nid, sub)
+            resolved_sub = resolve_endpoint_topic(
+                architecture=architecture,
+                endpoint=sub,
+                action=action,
+                namespace=namespace,
+                runtime_name=runtime_name,
+            )
+            add_subscription(architecture, nid, resolved_sub)
 
     return architecture
 
@@ -283,10 +453,13 @@ def output_path_for(layer2_path: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Constrói uma arquitetura runtime/anotada a partir de Layer 2 JSON + anotações YAML."
+        description=(
+            "Constrói uma arquitetura runtime a partir de Layer 2 JSON "
+            "+ interfaces YAML dos nós individuais."
+        )
     )
     parser.add_argument("layer2_json")
-    parser.add_argument("annotations_yaml")
+    parser.add_argument("node_interfaces_yaml")
     parser.add_argument(
         "-o",
         "--output",
@@ -296,17 +469,17 @@ def main() -> int:
     args = parser.parse_args()
 
     layer2_path = Path(args.layer2_json)
-    annotations_path = Path(args.annotations_yaml)
+    node_interfaces_path = Path(args.node_interfaces_yaml)
 
     if not layer2_path.exists():
         print(f"[ERRO] Layer 2 JSON não encontrado: {layer2_path}")
         return 1
 
-    if not annotations_path.exists():
-        print(f"[ERRO] Anotações não encontradas: {annotations_path}")
+    if not node_interfaces_path.exists():
+        print(f"[ERRO] Interface YAML dos nós não encontrada: {node_interfaces_path}")
         return 1
 
-    architecture = build_architecture(layer2_path, annotations_path)
+    architecture = build_architecture(layer2_path, node_interfaces_path)
 
     output_path = Path(args.output) if args.output else output_path_for(layer2_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
