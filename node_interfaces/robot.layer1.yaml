@@ -1,0 +1,70 @@
+# Layer 1 anotada para robot.launch.py.
+# Representa conhecimento externo sobre as interfaces do node implementation.
+# Pode ser substituída futuramente por extração estática do código ou ros2 introspection.
+
+architecture_id: robot_runtime_architecture
+configuration_id: default
+node_implementations:
+  - id: node_impl:turtlebot3_node:turtlebot3_ros
+    package: turtlebot3_node
+    executable: turtlebot3_ros
+    node_type: standard
+    language: unknown
+    provenance:
+      extraction_method: annotation
+      confidence: 0.6
+      notes: >
+        Interface anotada manualmente a partir de documentação TurtleBot3 e
+        conhecimento externo. Não foi validada por execução runtime neste ambiente.
+      extraction_context:
+        validation_status: partially_validated
+        references:
+          - "ROBOTIS e-Manual TurtleBot3 Bringup"
+          - "ROBOTIS e-Manual TurtleBot3 Basic Examples"
+          - "ROS Index turtlebot3_node"
+    publishers:
+      - id: pubd:node_impl:turtlebot3_node:turtlebot3_ros:odom
+        topic_name: /odom
+        message_type: nav_msgs/msg/Odometry
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.5
+          notes: "O package turtlebot3_node é descrito como incluindo odometry; o tópico concreto /odom deve ser confirmado por runtime/código."
+          extraction_context:
+            validation_status: requires_runtime_validation
+
+      - id: pubd:node_impl:turtlebot3_node:turtlebot3_ros:tf
+        topic_name: /tf
+        message_type: tf2_msgs/msg/TFMessage
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+          notes: "A documentação TurtleBot3 indica publicação de transformações tf."
+          extraction_context:
+            validation_status: documented
+
+    subscriptions:
+      - id: subd:node_impl:turtlebot3_node:turtlebot3_ros:cmd_vel
+        topic_name: /cmd_vel
+        message_type: geometry_msgs/msg/Twist
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+          notes: "A documentação TurtleBot3 indica consumo de cmd_vel; em Jazzy o tipo pode depender da versão."
+          extraction_context:
+            validation_status: documented_version_dependent

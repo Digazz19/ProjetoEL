@@ -92,6 +92,7 @@ def architecture_json_to_graph(data: dict) -> Graph:
         add_literal(g, node_uri, ROS.hasRuntimeName, node.get("runtime_name"))
         add_literal(g, node_uri, ROS.hasNamespace, node.get("namespace"))
         add_literal(g, node_uri, ROS.hasSourceLayer2Id, node.get("source_layer2_id"))
+        add_literal(g, node_uri, ROS.hasNodeImplementationId, node.get("node_implementation_id"))
 
     # ------------------------------------------------------------------
     # Topics
@@ -126,7 +127,15 @@ def architecture_json_to_graph(data: dict) -> Graph:
 
         add_literal(g, publication_uri, ROS.hasPublicationId, publication_id)
         add_literal(g, publication_uri, ROS.hasTopicName, publication.get("topic_name"))
-        add_literal(g, publication_uri, ROS.hasMessageType, publication.get("msg_type"))
+        add_literal(g, publication_uri, ROS.hasMessageType, publication.get("msg_type"))     
+        add_literal(g, publication_uri, ROS.hasDeclarationId, publication.get("declared_in"))
+        add_literal(g, publication_uri, ROS.hasNodeImplementationId, publication.get("node_implementation_id"))
+        add_literal(g, publication_uri, ROS.hasSourceLayer2ActionId, publication.get("source_layer2_action_id"))
+        add_literal(g, publication_uri, ROS.hasOriginalTopicName, publication.get("original_topic_name"))
+        add_literal(g, publication_uri, ROS.hasRemapFrom, publication.get("remap_from"))
+        add_literal(g, publication_uri, ROS.hasRemapTo, publication.get("remap_to"))
+        add_literal(g, publication_uri, ROS.remapApplied, bool(publication.get("remap_applied")), datatype=XSD.boolean)
+ 
 
         if node_uri is not None:
             g.add((publication_uri, ROS.hasPublisher, node_uri))
@@ -154,6 +163,14 @@ def architecture_json_to_graph(data: dict) -> Graph:
         add_literal(g, subscription_uri, ROS.hasSubscriptionId, subscription_id)
         add_literal(g, subscription_uri, ROS.hasTopicName, subscription.get("topic_name"))
         add_literal(g, subscription_uri, ROS.hasMessageType, subscription.get("msg_type"))
+        add_literal(g, subscription_uri, ROS.hasDeclarationId, subscription.get("declared_in"))
+        add_literal(g, subscription_uri, ROS.hasNodeImplementationId, subscription.get("node_implementation_id"))
+        add_literal(g, subscription_uri, ROS.hasSourceLayer2ActionId, subscription.get("source_layer2_action_id"))
+        add_literal(g, subscription_uri, ROS.hasOriginalTopicName, subscription.get("original_topic_name"))
+        add_literal(g, subscription_uri, ROS.hasRemapFrom, subscription.get("remap_from"))
+        add_literal(g, subscription_uri, ROS.hasRemapTo, subscription.get("remap_to"))
+        add_literal(g, subscription_uri, ROS.remapApplied, bool(subscription.get("remap_applied")), datatype=XSD.boolean)
+ 
 
         if node_uri is not None:
             g.add((subscription_uri, ROS.hasSubscriber, node_uri))

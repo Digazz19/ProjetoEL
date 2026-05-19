@@ -1,0 +1,33 @@
+architecture_id: communication_remap_runtime_architecture
+configuration_id: remap_demo
+node_implementations:
+  - id: node_impl:demo_pkg:remap_talker
+    package: demo_pkg
+    executable: remap_talker
+    node_type: standard
+    language: unknown
+    provenance: &manual_remap_provenance
+      extraction_method: annotation
+      confidence: 1.0
+      notes: "Anotação manual para testar composição Layer 1 + Layer 2 remappings."
+    publishers:
+      - id: pubd:node_impl:demo_pkg:remap_talker:chatter
+        topic_name: /chatter
+        message_type: std_msgs/msg/String
+        qos_profile: &reliable_qos
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+  - id: node_impl:demo_pkg:remap_listener
+    package: demo_pkg
+    executable: remap_listener
+    node_type: standard
+    language: unknown
+    provenance: *manual_remap_provenance
+    subscriptions:
+      - id: subd:node_impl:demo_pkg:remap_listener:robot_chatter
+        topic_name: /robot/chatter
+        message_type: std_msgs/msg/String
+        qos_profile: *reliable_qos

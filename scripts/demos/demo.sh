@@ -83,9 +83,11 @@ python3 scripts/ontology/validate_all_rdf.py
 
 echo
 echo "======================================"
-echo "  7. Gerar Layer 2 do exemplo de comunicação"
+echo "  7. Gerar Layer 2 dos exemplos de comunicação"
 echo "======================================"
 python3 main.py python examples/communication/communication_demo.launch.py
+python3 main.py python examples/communication/communication_remap.launch.py
+python3 main.py python examples/real-python/robot.launch.py
 
 echo
 echo "======================================"
@@ -93,11 +95,15 @@ echo "  8. Pipeline de comunicação"
 echo "======================================"
 python3 scripts/communication/run_communication_pipeline.py \
   output/communication_demo.launch.layer2.json \
-  node_interfaces/communication_demo.communication.yaml
+  node_interfaces/communication_demo.layer1.yaml
+
+python3 scripts/communication/run_communication_pipeline.py \
+  output/communication_remap.launch.layer2.json \
+  node_interfaces/communication_remap.layer1.yaml
 
 python3 scripts/communication/run_communication_pipeline.py \
   output/robot.launch.layer2.json \
-  node_interfaces/robot.communication.yaml
+  node_interfaces/robot.layer1.yaml
 
 echo
 echo "======================================"

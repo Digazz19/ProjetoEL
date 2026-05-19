@@ -211,6 +211,9 @@ ros:hasSourceLayer2Id a owl:DatatypeProperty ;
     rdfs:domain ros:RuntimeNode ;
     rdfs:range xsd:string .
 
+ros:hasNodeImplementationId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
 ros:publishes a owl:ObjectProperty ;
     rdfs:domain ros:RuntimeNode ;
     rdfs:range ros:Publication .
@@ -250,6 +253,24 @@ ros:hasPublicationId a owl:DatatypeProperty ;
 
 ros:hasSubscriptionId a owl:DatatypeProperty ;
     rdfs:domain ros:Subscription ;
+    rdfs:range xsd:string .
+
+ros:hasDeclarationId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+ros:hasSourceLayer2ActionId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+ros:hasOriginalTopicName a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+ros:remapApplied a owl:DatatypeProperty ;
+    rdfs:range xsd:boolean .
+
+ros:hasRemapFrom a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+ros:hasRemapTo a owl:DatatypeProperty ;
     rdfs:range xsd:string .
 
 #################################################################

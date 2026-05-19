@@ -1,0 +1,32 @@
+PREFIX ros: <http://example.org/ros-launch#>
+
+SELECT
+  ?entity
+  ?topic_id
+  ?topic_name
+  ?publisher_node
+  ?subscriber_node
+  ?publisher_msg_type
+  ?subscriber_msg_type
+WHERE {
+  ?topic a ros:Topic ;
+         ros:hasTopicId ?topic_id ;
+         ros:hasTopicName ?topic_name .
+
+  ?pub a ros:Publication ;
+       ros:onTopic ?topic ;
+       ros:hasPublisher ?pub_node ;
+       ros:hasMessageType ?publisher_msg_type .
+
+  ?sub a ros:Subscription ;
+       ros:onTopic ?topic ;
+       ros:hasSubscriber ?sub_node ;
+       ros:hasMessageType ?subscriber_msg_type .
+
+  ?pub_node ros:hasRuntimeName ?publisher_node .
+  ?sub_node ros:hasRuntimeName ?subscriber_node .
+
+  BIND(?topic AS ?entity)
+
+  FILTER(STR(?publisher_msg_type) != STR(?subscriber_msg_type))
+}

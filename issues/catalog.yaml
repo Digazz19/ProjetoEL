@@ -133,3 +133,12 @@ issues:
     description: "Topic '{topic_name}' tem publisher '{publisher_node}' com reliability '{publisher_reliability}' mas subscriber '{subscriber_node}' requer '{subscriber_reliability}'."
     recommendation: "Alinhar a reliability QoS entre publisher e subscriber."
     entity_type: topic
+
+  message_type_mismatch:
+    enabled: true
+    severity: critical
+    category: communication
+    title: "Tipo de mensagem incompatível"
+    description: "Topic '{topic_name}' tem publisher '{publisher_node}' com tipo '{publisher_msg_type}' mas subscriber '{subscriber_node}' espera '{subscriber_msg_type}'."
+    recommendation: "Corrigir o tipo publicado/subscrito ou aplicar remapping para tópicos distintos."
+    entity_type: topic

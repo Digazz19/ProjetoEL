@@ -19,7 +19,7 @@ Desenvolver uma pipeline de engenharia de linguagens que, dado um ou vários lau
 7. executar queries **SPARQL** para detectar issues directamente sobre a ontologia;
 8. construir uma arquitectura runtime de comunicação a partir dos nodes lançados, das interfaces conhecidas dos nodes e dos remappings do launch file;
 9. representar topics, publishers, subscribers e perfis QoS;
-10. detectar issues de comunicação, como publishers sem subscribers, subscribers sem publishers, nodes isolados, múltiplos publishers no mesmo topic e incompatibilidades de QoS;
+10. detectar issues de comunicação, como publishers sem subscribers, subscribers sem publishers, nodes isolados, múltiplos publishers no mesmo topic e incompatibilidades de QoS e incompatibilidades de tipos de mensagem;
 11. executar a mesma análise ontológica localmente com `rdflib` ou num triplestore externo como GraphDB.
 
 O output pode ser usado como base para integração com o HAROS ou com ferramentas RDF externas, como GraphDB.
@@ -63,7 +63,8 @@ ProjetoEL/
 │           ├── publisher_without_subscriber.rq
 │           ├── subscriber_without_publisher.rq
 │           ├── topic_multiple_publishers.rq
-│           └── qos_reliability_mismatch.rq
+│           ├── qos_reliability_mismatch.rq
+│           └── message_type_mismatch.rq
 │
 ├── scripts/
 │   ├── ontology/
@@ -92,8 +93,9 @@ ProjetoEL/
 │       └── demo_communication.sh
 │
 ├── node_interfaces/                     # Interfaces conhecidas dos nodes individuais
-│   ├── robot.communication.yaml
-│   └── communication_demo.communication.yaml
+│   ├── robot.layer1.yaml                 # formato novo: Layer 1 anotada
+│   ├── communication_demo.layer1.yaml
+│   └── communication_remap.layer1.yaml
 │
 ├── parsers/
 │   ├── xml/
@@ -104,7 +106,7 @@ ProjetoEL/
 │   ├── layer2-minimal/                  # 30 exemplos mínimos
 │   ├── layer2-haros-coverage/           # 28 exemplos de cobertura Layer 2
 │   ├── real-python/                     # 12 launch files ROS2 reais
-│   └── communication/                   # Exemplo controlado para comunicação
+│   └── communication/                   # Exemplos controlados para comunicação e remappings
 │
 └── output/                              # Artefactos gerados
     ├── *.layer2.json
@@ -186,7 +188,7 @@ O transformer percorre a árvore **bottom-up** — os nós folha são processado
 
 A parte de análise foi separada do modelo: `models/layer2.py` mantém a representação Layer 2; `validation/layer2_validator.py` contém a validação estrutural; `models/layer6.py` contém a estrutura dos resultados de análise; e a pasta `issues/` contém os detectores, o catálogo externo de issues e a escrita dos resultados.
 
-Numa fase posterior, a pipeline foi também estendida com uma camada de arquitectura runtime anotada. Esta camada não tenta inferir automaticamente publishers, subscribers e QoS a partir do código dos nodes, porque essa informação normalmente não está disponível nos launch files. Em vez disso, parte do Layer 2 e de ficheiros auxiliares de comunicação escritos em YAML. A partir dessas anotações, o sistema constrói uma arquitectura resolvida com `RuntimeNode`, `Topic`, `Publication`, `Subscription` e `QoSProfile`, exporta essa arquitectura para RDF/Turtle e executa queries SPARQL de comunicação.
+Numa fase posterior, a pipeline foi também estendida com uma camada de arquitectura runtime anotada. Esta camada não tenta inferir automaticamente publishers, subscribers e QoS a partir do código dos nodes, porque essa informação normalmente não está disponível nos launch files. Em vez disso, combina a Layer 2 com ficheiros `*.layer1.yaml`, que representam uma Layer 1 anotada manualmente. A partir dessas anotações, o sistema constrói uma arquitectura resolvida com `RuntimeNode`, `Topic`, `Publication`, `Subscription` e `QoSProfile`, exporta essa arquitectura para RDF/Turtle e executa queries SPARQL de comunicação.
 
 Esta extensão permite detectar problemas que não são observáveis directamente no Layer 2, como publishers sem subscribers, subscribers sem publishers, tópicos com múltiplos publishers, nodes isolados e incompatibilidades simples de QoS.
 
@@ -242,7 +244,7 @@ python3 scripts/ontology/run_all_ontology_pipeline.py output
 ```bash
 python3 scripts/communication/run_communication_pipeline.py \
   output/robot.launch.layer2.json \
-  node_interfaces/robot.communication.yaml
+  node_interfaces/robot.layer1.yaml
 ```
 
 ### GraphDB
@@ -1667,7 +1669,7 @@ Ainda falta testar ou clarificar:
 | `OpaqueFunction`                       | fora do subconjunto atual | Python dinâmico complexo ainda não é suportado.                                                             |
 | Loops dependentes de runtime           | fora do subconjunto atual | Não há abstract interpretation completa para estes casos.                                                   |
 | Execução sandboxed fallback            | não implementado          | O documento HAROS menciona esta possibilidade, mas o projeto ainda não a implementa.                        |
-| Publishers/subscribers reais           | suportado via camada runtime anotada | Launch files não indicam necessariamente os topics publicados/subscritos; a informação vem de `node_interfaces/*.communication.yaml` e é cruzada com os NodeAction do Layer 2 e remappings.                       |
+| Publishers/subscribers reais           | suportado via Layer 1 anotada | Launch files não indicam necessariamente os topics publicados/subscritos; a informação vem de `node_interfaces/*.layer1.yaml`, que descreve NodeImplementations, PublisherDeclarations e SubscriptionDeclarations, e é cruzada com os NodeAction do Layer 2 e remappings. |
 | Integração real com HAROS              | por fazer                 | O JSON está próximo do Layer 2, mas ainda não foi consumido diretamente pelo HAROS.                         |
 | Regras arquiteturais ROS               | por fazer                 | Já existem regras de comunicação sobre node isolado, publisher sem subscriber, subscriber sem publisher, múltiplos publishers e QoS reliability; continuam fora do escopo casos mais avançados sem informação adicional dos nodes.                  |
 
@@ -2181,27 +2183,54 @@ Node(
 
 mas esta linha não diz que o node publica `/odom` ou `/tf`, nem que subscreve `/cmd_vel`. Essa informação pertence ao node individual, isto é, ao código do node, à documentação do package, a ficheiros de configuração, a análise estática do código ou a observação em runtime.
 
-Por isso, a estratégia usada nesta fase segue a ideia:
+Por isso, a estratégia usada nesta fase segue a ideia indicada na última sessão de acompanhamento:
 
 ```text
-arquitectura de comunicação =
+arquitectura runtime de comunicação =
     informação dos nós individuais
   + informação dos nodes lançados pelo launch file
   + remappings definidos no launch file
 ```
 
-### Papel dos ficheiros node_interfaces/*.communication.yaml
+### Layer 1 anotada
 
-Os ficheiros YAML em node_interfaces/ *não representam a arquitectura final*. Representam a interface conhecida dos nodes individuais.
+Depois de receber a especificação da Layer 1, a camada de comunicação foi aproximada desse modelo. Em vez de tratar os YAML como ficheiros auxiliares genéricos, os novos ficheiros `*.layer1.yaml` representam **NodeImplementations anotados manualmente**.
 
-Ou seja, dizem:
+Isto significa que, no projecto actual, a Layer 1 ainda **não é extraída automaticamente do código C++/Python dos nodes**. Ela é fornecida como anotação explícita, com `provenance.extraction_method = annotation`. Esta opção mantém a pipeline reproduzível e torna clara a origem da informação.
 
-- que node se pretende anotar;
-- como encontrar esse node dentro do Layer 2;
-- que topics esse node publica;
-- que topics esse node subscreve;
-- que tipo de mensagem usa cada topic;
-- que QoS é esperado em cada publisher/subscriber.
+A relação implementada é:
+
+```text
+Layer 1 anotada
+  NodeImplementation
+  PublisherDeclaration / SubscriptionDeclaration
+        │
+        ▼
+Layer 2 extraída do launch file
+  NodeAction + namespace + remappings
+        │
+        ▼
+RuntimeArchitecture
+  RuntimeNode + Topic + Publication + Subscription + QoSProfile
+        │
+        ▼
+RDF/Turtle
+        │
+        ▼
+SPARQL communication issues
+```
+
+Esta decisão aproxima o projecto da especificação HAROS sem fingir que já existe análise automática de código. No futuro, os ficheiros `*.layer1.yaml` podem ser substituídos ou complementados por análise estática de código, documentação dos packages, introspecção runtime (`ros2 node info`, `ros2 topic info -v`) ou ground truth fornecido por peritos.
+
+### Formato YAML Layer 1 anotado
+
+O formato usado pela pipeline de comunicação é:
+
+```text
+node_interfaces/*.layer1.yaml
+```
+
+Estes ficheiros representam uma **Layer 1 anotada manualmente**. Cada entrada descreve um `NodeImplementation` e as suas declarações de comunicação (`PublisherDeclaration` e `SubscriptionDeclaration`). A informação não é inferida automaticamente do código dos nodes; é fornecida como anotação explícita e marcada com `provenance.extraction_method = annotation`.
 
 Exemplo simplificado:
 
@@ -2209,80 +2238,98 @@ Exemplo simplificado:
 architecture_id: robot_runtime_architecture
 configuration_id: default
 
-nodes:
-  - selector:
-      package: turtlebot3_node
-      executable: turtlebot3_ros
+node_implementations:
+  - id: node_impl:turtlebot3_node:turtlebot3_ros
+    package: turtlebot3_node
+    executable: turtlebot3_ros
+    node_type: standard
+    language: unknown
+    provenance:
+      extraction_method: annotation
+      confidence: 0.7
+      notes: "Anotação manual baseada em documentação ou observação."
 
-    runtime_name: /turtlebot3_ros
-
-    publishes:
-      - topic: /odom
-        msg_type: nav_msgs/msg/Odometry
-        qos:
+    publishers:
+      - id: pubd:node_impl:turtlebot3_node:turtlebot3_ros:odom
+        topic_name: /odom
+        message_type: nav_msgs/msg/Odometry
+        qos_profile:
           reliability: reliable
           durability: volatile
           history: keep_last
           depth: 10
 
-      - topic: /tf
-        msg_type: tf2_msgs/msg/TFMessage
-        qos:
-          reliability: reliable
-          durability: volatile
-          history: keep_last
-          depth: 10
-
-    subscribes:
-      - topic: /cmd_vel
-        msg_type: geometry_msgs/msg/Twist
-        qos:
+    subscriptions:
+      - id: subd:node_impl:turtlebot3_node:turtlebot3_ros:cmd_vel
+        topic_name: /cmd_vel
+        message_type: geometry_msgs/msg/Twist
+        qos_profile:
           reliability: reliable
           durability: volatile
           history: keep_last
           depth: 10
 ```
 
-Esta informação pode vir de várias fontes:
+Os IDs seguem a convenção da Layer 1:
 
 ```text
-1. documentação do package ROS2;
-2. código fonte do node;
-3. ficheiros de configuração do node;
-4. conhecimento do domínio;
-5. output de ferramentas runtime como ros2 node info;
-6. anotações manuais controladas para teste.
+node_impl:<package>:<executable>
+pubd:<node_impl_id>:<local_name>
+subd:<node_impl_id>:<local_name>
 ```
 
-No projecto, esta informação é fornecida em YAML para manter a pipeline reproduzível, explícita e testável. O YAML funciona como substituto de uma futura Layer 1 ou de uma futura análise automática dos nodes individuais.
+A pipeline de comunicação usa apenas `*.layer1.yaml`, com `node_implementations`, `publishers` e `subscriptions`, para manter uma única abordagem alinhada com a especificação da Layer 1.
 
-### Validação da interface anotada de `robot.launch.py`
+### Ligação Layer 1 → Runtime
 
-No caso de `robot.launch.py`, a interface em `node_interfaces/robot.communication.yaml`
-foi tratada como anotação manual parcialmente validada. Como não foi possível executar
-ROS2 neste ambiente, a validação não foi feita por introspecção runtime.
+A RuntimeArchitecture passou a guardar ligações explícitas para a origem dos seus elementos.
 
-A validação ideal seria feita com:
+Cada `RuntimeNode` mantém:
 
-```bash
-ros2 node info /turtlebot3_ros
-ros2 topic info -v /cmd_vel
-ros2 topic info -v /odom
-ros2 topic info -v /tf
+```text
+node_implementation_id
+source_layer2_action_id
+provenance
 ```
 
-ou por análise estática do código fonte dos packages envolvidos.
+Cada `Publication` e `Subscription` mantém:
 
-A hipótese de `/scan` pertencer directamente à interface de `/turtlebot3_ros` teria de ser validada separadamente, porque pode pertencer a outro node/driver, como um node de LIDAR ou obstacle detection.
+```text
+declared_in                  # pubd:/subd: da Layer 1 anotada
+node_implementation_id        # NodeImplementation de origem
+source_layer2_action_id       # NodeAction que lançou o node
+original_topic_name           # topic antes de remapping
+remap_applied
+remap_from
+remap_to
+provenance
+```
 
-| Entrada                                         | Estado                         | Comentário                                                                                                                                                                                                         |
-| ----------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/cmd_vel` como subscrição de `/turtlebot3_ros` | Mantido                        | A documentação TurtleBot3 indica que o TurtleBot3 Node subscreve `cmd_vel` para controlar o movimento. Em algumas versões, o tipo pode ser `TwistStamped` em vez de `Twist`.                                       |
-| `/odom` como publicação de `/turtlebot3_ros`    | Mantido com validação pendente | O bringup TurtleBot3 expõe `/odom`, mas a associação exacta ao node/processo deve ser confirmada por runtime ou código fonte.                                                                                      |
-| `/tf` como publicação de `/turtlebot3_ros`      | Mantido com validação pendente | O bringup TurtleBot3 expõe `/tf`, mas a documentação também menciona componentes internos como `diff_drive_controller`; a associação exacta deve ser confirmada.                                                   |
-| `/scan` como subscrição de `/turtlebot3_ros`    | Removido da anotação final     | A documentação associa a subscrição de `/scan` ao `turtlebot3_obstacle_detection`, não directamente ao `turtlebot3_node`. Por isso, não foi mantido como interface real de `turtlebot3_ros` sem validação runtime. |
+Exemplo conceptual:
 
-Assim, o exemplo `robot.launch.py` é usado como caso real parcialmente anotado, enquanto `communication_demo.launch.py` é o exemplo controlado usado para demonstrar todos os issues de comunicação suportados.
+```json
+{
+  "id": "publication:runtime_node_...:robot_chatter",
+  "topic_name": "/robot/chatter",
+  "msg_type": "std_msgs/msg/String",
+  "declared_in": "pubd:node_impl:demo_pkg:remap_talker:chatter",
+  "node_implementation_id": "node_impl:demo_pkg:remap_talker",
+  "source_layer2_action_id": "la:file_communication_remap_launch_py:...",
+  "original_topic_name": "/chatter",
+  "remap_applied": true,
+  "remap_from": "/chatter",
+  "remap_to": "/robot/chatter"
+}
+```
+
+Isto permite rastrear uma issue de comunicação até:
+
+```text
+1. a declaração Layer 1 anotada;
+2. o NodeAction da Layer 2;
+3. o topic final depois de namespace/remap;
+4. a regra SPARQL que detectou o problema.
+```
 
 ### Construção da RuntimeArchitecture
 
@@ -2291,7 +2338,7 @@ O script principal é:
 ```bash
 python3 scripts/communication/build_runtime_architecture.py \
   output/robot.launch.layer2.json \
-  node_interfaces/robot.communication.yaml
+  node_interfaces/robot.layer1.yaml
 ```
 
 ou, usando a pipeline completa:
@@ -2299,49 +2346,64 @@ ou, usando a pipeline completa:
 ```bash
 python3 scripts/communication/run_communication_pipeline.py \
   output/robot.launch.layer2.json \
-  node_interfaces/robot.communication.yaml
+  node_interfaces/robot.layer1.yaml
 ```
 
 O processo é:
 
 ```text
 1. carregar o JSON Layer 2;
-2. carregar o YAML com a interface dos nodes individuais;
-3. procurar, no Layer 2, os NodeAction que correspondem aos selectors do YAML;
-4. construir RuntimeNode para cada node realmente lançado;
+2. carregar o YAML com a Layer 1 anotada;
+3. procurar, no Layer 2, os NodeAction correspondentes aos NodeImplementations anotados;
+4. construir RuntimeNode para cada node lançado;
 5. aplicar name e namespace;
 6. aplicar os remappings declarados no launch file;
 7. criar Topic, Publication, Subscription e QoSProfile;
-8. gerar RuntimeArchitecture em JSON;
-9. exportar a arquitectura para RDF/Turtle;
-10. executar queries SPARQL de comunicação.
+8. guardar ligações de proveniência e traceability;
+9. gerar RuntimeArchitecture em JSON;
+10. exportar a arquitectura para RDF/Turtle;
+11. executar queries SPARQL de comunicação;
+12. converter resultados em issues Layer 6.
 ```
 
 ### Aplicação de remappings
 
-Os remappings pertencem ao launch file. Por isso, a interface do node é escrita em termos dos topics que o node usa, mas a arquitectura runtime deve reflectir os nomes depois de aplicados os remappings.
+Os remappings pertencem ao launch file. Por isso, a interface do node é escrita em termos dos topics que o node usa internamente, mas a arquitectura runtime deve reflectir os nomes finais depois de aplicados os remappings.
 
 Exemplo:
 
 ```python
 Node(
     package="demo_pkg",
-    executable="talker",
+    executable="remap_talker",
+    name="remap_talker",
     remappings=[
         ("/chatter", "/robot/chatter")
     ]
 )
 ```
 
-Se o YAML disser que o node publica **/chatter**, a RuntimeArchitecture deve registar a publicação em **/robot/chatter**, porque esse é o topic efectivo após o launch file ser aplicado.
+Se a Layer 1 anotada disser que o node publica `/chatter`, a RuntimeArchitecture regista a publicação final em `/robot/chatter`.
 
-Isto é a ligação entre:
+Isto é validado pelo exemplo:
 
 ```text
-informação do node individual → /chatter
-launch file → remap /chatter para /robot/chatter
-arquitectura runtime → publisher em /robot/chatter
+examples/communication/communication_remap.launch.py
+node_interfaces/communication_remap.layer1.yaml
 ```
+
+Resultado esperado:
+
+```text
+Nodes: 2
+Topics: 1
+Publications: 1
+Subscriptions: 1
+Warnings: 1 remap aplicado
+Issues de comunicação: 0
+```
+
+Este exemplo demonstra que a comunicação é analisada após a composição entre Layer 1 anotada e Layer 2, e não apenas a partir dos nomes originais dos topics.
 
 ### Modelo RuntimeArchitecture
 
@@ -2362,18 +2424,21 @@ Subscription
 QoSProfile
 ```
 
-Exemplo de estrutura:
+Exemplo simplificado:
 
 ```json
 {
   "id": "robot_runtime_architecture",
   "configuration_id": "default",
   "source_layer2_path": "output/robot.launch.layer2.json",
+  "source_launch_description_id": "launch_desc_file_robot_launch_py",
   "nodes": {
     "runtime_node:...": {
       "package": "turtlebot3_node",
       "executable": "turtlebot3_ros",
-      "runtime_name": "/turtlebot3_ros"
+      "runtime_name": "/turtlebot3_ros",
+      "node_implementation_id": "node_impl:turtlebot3_node:turtlebot3_ros",
+      "source_layer2_action_id": "la:file_robot_launch_py:..."
     }
   },
   "topics": {
@@ -2406,7 +2471,7 @@ ros:Subscription
 ros:QoSProfile
 ```
 
-E relações como:
+E relações/propriedades como:
 
 ```text
 ros:publishes
@@ -2419,6 +2484,14 @@ ros:qosReliability
 ros:qosDurability
 ros:qosHistory
 ros:qosDepth
+ros:hasNodeImplementationId
+ros:hasDeclarationId
+ros:hasSourceLayer2ActionId
+ros:hasOriginalTopicName
+ros:remapApplied
+ros:hasRemapFrom
+ros:hasRemapTo
+ros:hasMessageType
 ```
 
 ### Issues de comunicação
@@ -2427,20 +2500,21 @@ Depois de exportada a arquitectura para RDF, são executadas queries SPARQL sobr
 
 Issues actualmente suportados:
 
-| Issue                          | Descrição                                                         |
-| ------------------------------ | ----------------------------------------------------------------- |
-| `isolated_node`                | Node runtime sem publishers nem subscribers anotados              |
-| `publisher_without_subscriber` | Topic publicado sem subscribers conhecidos                        |
-| `subscriber_without_publisher` | Topic subscrito sem publishers conhecidos                         |
-| `topic_multiple_publishers`    | Topic com mais do que um publisher                                |
-| `qos_reliability_mismatch`     | Publisher `best_effort` ligado a subscriber que requer `reliable` |
+| Issue | Descrição |
+|---|---|
+| `isolated_node` | Node runtime sem publishers nem subscribers anotados |
+| `publisher_without_subscriber` | Topic publicado sem subscribers conhecidos |
+| `subscriber_without_publisher` | Topic subscrito sem publishers conhecidos |
+| `topic_multiple_publishers` | Topic com mais do que um publisher |
+| `qos_reliability_mismatch` | Publisher `best_effort` ligado a subscriber que requer `reliable` |
+| `message_type_mismatch` | Publisher e subscriber ligados ao mesmo topic mas com tipos de mensagem diferentes |
 
-Exemplo de execução:
+Exemplo de execução com o formato novo:
 
 ```bash
 python3 scripts/communication/run_communication_pipeline.py \
   output/communication_demo.launch.layer2.json \
-  node_interfaces/communication_demo.communication.yaml
+  node_interfaces/communication_demo.layer1.yaml
 ```
 
 Resultado esperado no exemplo controlado:
@@ -2450,55 +2524,99 @@ Resultado esperado no exemplo controlado:
 [OK] Topics: 4
 [OK] Publications: 4
 [OK] Subscriptions: 3
-[OK] Issues de comunicação: 5
-  [WARNING ] Node '/isolated' não publica nem subscreve tópicos na arquitetura anotada.
-  [WARNING ] Topic '/lonely_pub' publicado por '/lonely_publisher' não tem subscribers anotados.
-  [WARNING ] Topic '/lonely_sub' subscrito por '/lonely_subscriber' não tem publishers anotados.
-  [WARNING ] Topic '/shared_topic' tem 2 publishers anotados: /talker_b, /talker_a.
-  [ERROR   ] Topic '/qos_topic' tem publisher '/qos_publisher' com reliability 'best_effort' mas subscriber '/qos_subscriber' requer 'reliable'.
+[OK] Issues de comunicação: 6
+  [WARNING ] Node 'isolated' não publica nem subscreve tópicos na arquitetura anotada.
+  [WARNING ] Topic '/lonely_pub' publicado por 'lonely_publisher' não tem subscribers anotados.
+  [WARNING ] Topic '/lonely_sub' subscrito por 'lonely_subscriber' não tem publishers anotados.
+  [WARNING ] Topic '/shared_topic' tem 2 publishers anotados: talker_b, talker_a.
+  [ERROR   ] Topic '/qos_topic' tem publisher 'qos_publisher' com reliability 'best_effort' mas subscriber 'qos_subscriber' requer 'reliable'.
+  [CRITICAL] Topic '/qos_topic' tem publisher 'qos_publisher' com tipo 'std_msgs/msg/String' mas subscriber 'qos_subscriber' espera 'std_msgs/msg/Int32'.
 ```
 
-### Exemplo controlado de comunicação
+### Exemplos controlados de comunicação
 
-Foi criado um exemplo específico para validar esta camada:
+Foram criados dois exemplos principais:
 
 ```text
 examples/communication/communication_demo.launch.py
-node_interfaces/communication_demo.communication.yaml
+node_interfaces/communication_demo.layer1.yaml
 ```
 
-Este exemplo foi desenhado para exercitar os principais casos de comunicação:
+Este exemplo valida os issues de comunicação:
 
 ```text
 /talker_a e /talker_b publicam no mesmo tópico
 /shared_listener subscreve esse tópico
 /qos_publisher e /qos_subscriber têm QoS incompatível
+/qos_publisher e /qos_subscriber têm tipos de mensagem incompatíveis
 /isolated não comunica com ninguém
 /lonely_publisher publica sem subscriber
 /lonely_subscriber subscreve sem publisher
 ```
 
-A pipeline permite aplicar a mesma metodologia tanto a exemplos controlados como a launch files reais. No exemplo controlado, a informação em `node_interfaces/communication_demo.communication.yaml` não pretende representar um sistema real completo; serve para validar que o modelo consegue representar publicações, subscrições, múltiplos publishers, ausência de pares de comunicação e incompatibilidade de QoS.
+E:
+
+```text
+examples/communication/communication_remap.launch.py
+node_interfaces/communication_remap.layer1.yaml
+```
+
+Este exemplo valida especificamente a aplicação de remappings:
+
+```text
+/remap_talker publica originalmente em /chatter
+o launch file remapeia /chatter para /robot/chatter
+/remap_listener subscreve /robot/chatter
+a arquitectura final tem 1 topic e 0 issues de comunicação
+```
+
+### Validação da interface anotada de `robot.launch.py`
+
+No caso de `robot.launch.py`, a interface em `node_interfaces/robot.layer1.yaml` foi tratada como anotação manual parcialmente validada. Como não foi possível executar ROS2 neste ambiente, a validação não foi feita por introspecção runtime.
+
+A validação ideal seria feita com:
+
+```bash
+ros2 node info /turtlebot3_ros
+ros2 topic info -v /cmd_vel
+ros2 topic info -v /odom
+ros2 topic info -v /tf
+```
+
+ou por análise estática do código fonte dos packages envolvidos.
+
+A hipótese de `/scan` pertencer directamente à interface de `/turtlebot3_ros` teria de ser validada separadamente, porque pode pertencer a outro node/driver, como um node de LIDAR ou obstacle detection.
+
+| Entrada | Estado | Comentário |
+|---|---|---|
+| `/cmd_vel` como subscrição de `/turtlebot3_ros` | Mantido | A documentação TurtleBot3 indica que o TurtleBot3 Node subscreve `cmd_vel` para controlar o movimento. Em algumas versões, o tipo pode ser `TwistStamped` em vez de `Twist`. |
+| `/odom` como publicação de `/turtlebot3_ros` | Mantido com validação pendente | O bringup TurtleBot3 expõe `/odom`, mas a associação exacta ao node/processo deve ser confirmada por runtime ou código fonte. |
+| `/tf` como publicação de `/turtlebot3_ros` | Mantido com validação pendente | O bringup TurtleBot3 expõe `/tf`, mas a documentação também menciona componentes internos como `diff_drive_controller`; a associação exacta deve ser confirmada. |
+| `/scan` como subscrição de `/turtlebot3_ros` | Removido da anotação final | A documentação associa a subscrição de `/scan` ao `turtlebot3_obstacle_detection`, não directamente ao `turtlebot3_node`. Por isso, não foi mantido como interface real de `turtlebot3_ros` sem validação runtime. |
 
 ### Execução separada da pipeline de comunicação
 
 O script `run_communication_pipeline.py` agrega três fases, mas estas também podem ser executadas separadamente:
 
 ```bash
-python3 scripts/communication/build_runtime_architecture.py   output/robot.launch.layer2.json   node_interfaces/robot.communication.yaml
+python3 scripts/communication/build_runtime_architecture.py \
+  output/robot.launch.layer2.json \
+  node_interfaces/robot.layer1.yaml
 
-python3 scripts/communication/export_architecture_to_rdf.py   output/architecture/robot.launch.architecture.json
+python3 scripts/communication/export_architecture_to_rdf.py \
+  output/architecture/robot.launch.architecture.json
 
-python3 scripts/communication/run_communication_issues.py   output/rdf/architecture/robot.launch.architecture.ttl
+python3 scripts/communication/run_communication_issues.py \
+  output/rdf/architecture/robot.launch.architecture.ttl
 ```
 
 Isto deixa claro que a análise de comunicação é construída por etapas: primeiro a arquitectura runtime em JSON, depois a exportação RDF/Turtle, e finalmente as queries SPARQL de comunicação.
 
 ### Limitação importante
 
-A qualidade dos issues de comunicação depende da qualidade das interfaces fornecidas em **node_interfaces/**.
+A qualidade dos issues de comunicação depende da qualidade das interfaces fornecidas em `node_interfaces/`.
 
-Se faltar anotar um subscriber, pode aparecer um **publisher_without_subscriber**. Se faltar anotar um publisher, pode aparecer um **subscriber_without_publisher**.
+Se faltar anotar um subscriber, pode aparecer um `publisher_without_subscriber`. Se faltar anotar um publisher, pode aparecer um `subscriber_without_publisher`.
 
 Portanto, estes issues devem ser interpretados como:
 
@@ -2508,24 +2626,25 @@ Portanto, estes issues devem ser interpretados como:
 
 e não como prova absoluta de que o sistema real em runtime tem esse erro.
 
-Esta decisão é intencional: mantém clara a separação entre a informação extraída do launch file e a informação conhecida sobre os nodes individuais.
-
----
+Esta decisão é intencional: mantém clara a separação entre a informação extraída do launch file, a informação conhecida/anotada sobre os nodes individuais e a arquitectura runtime resultante.
 
 ### Decisão metodológica complementar
 
 A camada de comunicação foi mantida separada do Layer 2 por três razões:
 
 **1. Separação semântica**
-O Layer 2 representa o launch file. A arquitectura runtime representa uma configuração de comunicação. São níveis diferentes de informação.
+
+O Layer 2 representa o launch file. A Layer 1 anotada representa capacidades conhecidas dos node implementations. A RuntimeArchitecture representa uma configuração de comunicação concreta resultante da composição das duas.
 
 **2. Rastreabilidade**
-Cada RuntimeNode mantém referência ao action_id do NodeAction original. Assim, é possível ligar um problema de comunicação ao node que veio do launch file.
+
+Cada RuntimeNode mantém referência ao `action_id` do `NodeAction` original. Cada Publication/Subscription mantém referência ao `pubd`/`subd` que lhe deu origem. Assim, é possível ligar um problema de comunicação ao node lançado e à declaração de interface anotada.
 
 **3. Extensibilidade**
+
 A informação de comunicação pode vir de anotações YAML, de introspecção ROS2, de documentação, ou futuramente de análise de código. O modelo runtime não depende da origem da informação.
 
-Esta abordagem evita fingir que a comunicação foi inferida automaticamente quando ela foi, na verdade, fornecida por conhecimento auxiliar.
+Esta abordagem evita fingir que a comunicação foi inferida automaticamente quando ela foi, na verdade, fornecida por conhecimento auxiliar anotado.
 
 ---
 
@@ -2793,9 +2912,9 @@ A demo completa gera:
 - 70 RDFs Layer 2;
 - 12 JSONs de issues estruturais dos exemplos reais;
 - 70 JSONs de issues ontológicos;
-- 2 JSONs de arquitectura runtime de comunicação;
-- 2 RDFs de arquitectura runtime de comunicação;
-- 2 JSONs de issues de comunicação.
+- JSONs de arquitectura runtime de comunicação para os exemplos anotados;
+- RDFs de arquitectura runtime de comunicação;
+- JSONs de issues de comunicação.
 
 O exemplo controlado `communication_demo.launch.py` é usado para validar os issues de comunicação. A execução detecta:
 
@@ -2805,6 +2924,7 @@ O exemplo controlado `communication_demo.launch.py` é usado para validar os iss
 1 subscriber sem publisher
 1 topic com múltiplos publishers
 1 incompatibilidade de QoS reliability
+1 incompatibilidade de tipo de mensagem
 ```
 
 ---
@@ -2819,7 +2939,7 @@ Estas limitações são consequência da análise estática:
 - **`os.path.join()` com variáveis** — paths de includes podem ficar parcialmente resolvidos ou marcados como dinâmicos.
 - **f-strings com valores dinâmicos** — valores dependentes de variáveis de runtime não são totalmente avaliados.
 - **Namespace em Python** — `PushRosNamespace` é registado como acção, mas a herança efectiva de namespace requer análise de escopo mais avançada.
-- **Comunicação publish/subscribe** — os launch files normalmente não indicam directamente os publishers/subscribers de cada node. A abordagem atual combina a informação do launch file com ficheiros `node_interfaces/*.communication.yaml`, que representam a interface conhecida dos nodes individuais. Estes ficheiros funcionam como anotações controladas e podem futuramente ser substituídos ou complementados por análise estática de código, documentação dos packages ou descoberta runtime.
+- **Comunicação publish/subscribe** — os launch files normalmente não indicam directamente os publishers/subscribers de cada node. A abordagem atual combina a informação do launch file com ficheiros `node_interfaces/*.layer1.yaml`, que representam uma Layer 1 anotada manualmente com as interfaces conhecidas dos nodes individuais. No futuro, estas anotações podem ser substituídas ou complementadas por análise estática de código, documentação dos packages ou descoberta runtime.
 - **Qualidade das interfaces dos nodes** — os issues de comunicação dependem da completude dos ficheiros `node_interfaces`. Se faltar anotar um publisher ou subscriber, podem surgir warnings que significam “não encontrado na arquitectura anotada”, não necessariamente erro confirmado no sistema real.
 - **Remappings suportados** — os remappings do launch file são aplicados na construção da RuntimeArchitecture, mas casos altamente dinâmicos ou dependentes de substituições runtime podem continuar parcialmente simbólicos.
 - **GraphDB** — a análise GraphDB depende de um serviço externo em execução. Por isso, a demo principal não deve depender dele; a integração GraphDB fica numa demo separada.

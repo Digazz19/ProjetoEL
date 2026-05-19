@@ -1,0 +1,109 @@
+# Layer 1 anotada para examples/communication/communication_demo.launch.py.
+# Representa as interfaces dos node implementations. Não é a arquitetura runtime final.
+# A arquitetura runtime é obtida por composição com a Layer 2 e com remaps/namespaces.
+
+architecture_id: communication_demo_runtime_architecture
+configuration_id: demo
+
+node_implementations:
+  - id: node_impl:demo_pkg:talker_a
+    package: demo_pkg
+    executable: talker_a
+    node_type: standard
+    language: unknown
+    provenance: &manual_demo_provenance
+      extraction_method: annotation
+      confidence: 1.0
+      notes: "Anotação manual para caso de teste controlado."
+    publishers:
+      - id: pubd:node_impl:demo_pkg:talker_a:shared_topic
+        topic_name: /shared_topic
+        message_type: std_msgs/msg/String
+        qos_profile: &reliable_qos
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+  - id: node_impl:demo_pkg:talker_b
+    package: demo_pkg
+    executable: talker_b
+    node_type: standard
+    language: unknown
+    provenance: *manual_demo_provenance
+    publishers:
+      - id: pubd:node_impl:demo_pkg:talker_b:shared_topic
+        topic_name: /shared_topic
+        message_type: std_msgs/msg/String
+        qos_profile: *reliable_qos
+
+  - id: node_impl:demo_pkg:shared_listener
+    package: demo_pkg
+    executable: shared_listener
+    node_type: standard
+    language: unknown
+    provenance: *manual_demo_provenance
+    subscriptions:
+      - id: subd:node_impl:demo_pkg:shared_listener:shared_topic
+        topic_name: /shared_topic
+        message_type: std_msgs/msg/String
+        qos_profile: *reliable_qos
+
+  - id: node_impl:demo_pkg:qos_publisher
+    package: demo_pkg
+    executable: qos_publisher
+    node_type: standard
+    language: unknown
+    provenance: *manual_demo_provenance
+    publishers:
+      - id: pubd:node_impl:demo_pkg:qos_publisher:qos_topic
+        topic_name: /qos_topic
+        message_type: std_msgs/msg/String
+        qos_profile:
+          reliability: best_effort
+          durability: volatile
+          history: keep_last
+          depth: 10
+
+  - id: node_impl:demo_pkg:qos_subscriber
+    package: demo_pkg
+    executable: qos_subscriber
+    node_type: standard
+    language: unknown
+    provenance: *manual_demo_provenance
+    subscriptions:
+      - id: subd:node_impl:demo_pkg:qos_subscriber:qos_topic
+        topic_name: /qos_topic
+        message_type: std_msgs/msg/Int32
+        qos_profile: *reliable_qos
+
+  - id: node_impl:demo_pkg:isolated
+    package: demo_pkg
+    executable: isolated
+    node_type: standard
+    language: unknown
+    provenance: *manual_demo_provenance
+
+  - id: node_impl:demo_pkg:lonely_publisher
+    package: demo_pkg
+    executable: lonely_publisher
+    node_type: standard
+    language: unknown
+    provenance: *manual_demo_provenance
+    publishers:
+      - id: pubd:node_impl:demo_pkg:lonely_publisher:lonely_pub
+        topic_name: /lonely_pub
+        message_type: std_msgs/msg/String
+        qos_profile: *reliable_qos
+
+  - id: node_impl:demo_pkg:lonely_subscriber
+    package: demo_pkg
+    executable: lonely_subscriber
+    node_type: standard
+    language: unknown
+    provenance: *manual_demo_provenance
+    subscriptions:
+      - id: subd:node_impl:demo_pkg:lonely_subscriber:lonely_sub
+        topic_name: /lonely_sub
+        message_type: std_msgs/msg/String
+        qos_profile: *reliable_qos

@@ -46,6 +46,8 @@ class RuntimeNode:
     runtime_name: str
     namespace: Optional[str] = None
     source_layer2_id: Optional[str] = None
+    node_implementation_id: Optional[str] = None
+    provenance: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         d = {
@@ -60,7 +62,10 @@ class RuntimeNode:
             d["namespace"] = self.namespace
         if self.source_layer2_id is not None:
             d["source_layer2_id"] = self.source_layer2_id
-
+        if self.node_implementation_id is not None:
+            d["node_implementation_id"] = self.node_implementation_id
+        if self.provenance:
+            d["provenance"] = self.provenance
         return d
 
 
@@ -90,18 +95,43 @@ class Publication:
     topic_name: str
     msg_type: Optional[str] = None
     qos: QoSProfile = field(default_factory=QoSProfile)
+    declared_in: Optional[str] = None
+    node_implementation_id: Optional[str] = None
+    source_layer2_action_id: Optional[str] = None
+    original_topic_name: Optional[str] = None
+    remap_applied: bool = False
+    remap_from: Optional[str] = None
+    remap_to: Optional[str] = None
+    provenance: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "node_id": self.node_id,
-            "topic_id": self.topic_id,
-            "topic_name": self.topic_name,
-            "msg_type": self.msg_type,
-            "qos": self.qos.to_dict(),
-        }
+        d = {
+             "id": self.id,
+             "node_id": self.node_id,
+             "topic_id": self.topic_id,
+             "topic_name": self.topic_name,
+             "msg_type": self.msg_type,
+             "qos": self.qos.to_dict(),
+             "remap_applied": self.remap_applied,
+         }
+ 
+        if self.declared_in is not None:
+            d["declared_in"] = self.declared_in
+        if self.node_implementation_id is not None:
+            d["node_implementation_id"] = self.node_implementation_id
+        if self.source_layer2_action_id is not None:
+            d["source_layer2_action_id"] = self.source_layer2_action_id
+        if self.original_topic_name is not None:
+            d["original_topic_name"] = self.original_topic_name
+        if self.remap_from is not None:
+            d["remap_from"] = self.remap_from
+        if self.remap_to is not None:
+            d["remap_to"] = self.remap_to
+        if self.provenance:
+            d["provenance"] = self.provenance
 
-
+        return d
+    
 @dataclass
 class Subscription:
     id: str
@@ -110,17 +140,42 @@ class Subscription:
     topic_name: str
     msg_type: Optional[str] = None
     qos: QoSProfile = field(default_factory=QoSProfile)
+    declared_in: Optional[str] = None
+    node_implementation_id: Optional[str] = None
+    source_layer2_action_id: Optional[str] = None
+    original_topic_name: Optional[str] = None
+    remap_applied: bool = False
+    remap_from: Optional[str] = None
+    remap_to: Optional[str] = None
+    provenance: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "node_id": self.node_id,
-            "topic_id": self.topic_id,
-            "topic_name": self.topic_name,
-            "msg_type": self.msg_type,
-            "qos": self.qos.to_dict(),
-        }
+        d = {
+             "id": self.id,
+             "node_id": self.node_id,
+             "topic_id": self.topic_id,
+             "topic_name": self.topic_name,
+             "msg_type": self.msg_type,
+             "qos": self.qos.to_dict(),
+             "remap_applied": self.remap_applied,
+         }
+ 
+        if self.declared_in is not None:
+            d["declared_in"] = self.declared_in
+        if self.node_implementation_id is not None:
+            d["node_implementation_id"] = self.node_implementation_id
+        if self.source_layer2_action_id is not None:
+            d["source_layer2_action_id"] = self.source_layer2_action_id
+        if self.original_topic_name is not None:
+            d["original_topic_name"] = self.original_topic_name
+        if self.remap_from is not None:
+            d["remap_from"] = self.remap_from
+        if self.remap_to is not None:
+            d["remap_to"] = self.remap_to
+        if self.provenance:
+            d["provenance"] = self.provenance
 
+        return d
 
 @dataclass
 class RuntimeArchitecture:

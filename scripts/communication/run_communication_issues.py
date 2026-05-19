@@ -20,6 +20,7 @@ COMMUNICATION_QUERY_KEYS = [
     "subscriber_without_publisher",
     "topic_multiple_publishers",
     "qos_reliability_mismatch",
+    "message_type_mismatch",
 ]
 
 
