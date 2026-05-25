@@ -25,7 +25,7 @@ def main():
         print(f"\n==> {path}")
 
         result = run(
-            ["python3", "scripts/export_layer2_to_rdf.py", str(path)],
+            ["python3", "scripts/ontology/export_layer2_to_rdf.py", str(path)],
             text=True,
         )
 
