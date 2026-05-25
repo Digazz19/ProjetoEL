@@ -1,0 +1,221 @@
+# Layer 1 anotada para nodes adicionais
+# camera_ros, rviz2, rclcpp_components, custom_topic_cpp, topic_pubsub_py
+# extraction_method: annotation
+
+architecture_id: other_nodes_runtime_architecture
+configuration_id: default
+
+node_implementations:
+
+  # ─── camera_ros ──────────────────────────────────────────────────────────
+  - id: node_impl:camera_ros:camera_node
+    package: camera_ros
+    executable: camera_node
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.8
+      notes: Driver genérico para câmaras via libcamera.
+      extraction_context:
+        references:
+          - "https://github.com/christianrauch/camera_ros"
+    publishers:
+      - id: pubd:node_impl:camera_ros:camera_node:image_raw
+        topic_name: /camera/image_raw
+        message_type: sensor_msgs/msg/Image
+        qos_profile:
+          reliability: best_effort
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+      - id: pubd:node_impl:camera_ros:camera_node:camera_info
+        topic_name: /camera/camera_info
+        message_type: sensor_msgs/msg/CameraInfo
+        qos_profile:
+          reliability: best_effort
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+
+  # ─── image_view ──────────────────────────────────────────────────────────
+  - id: node_impl:image_view:image_view_node
+    package: image_view
+    executable: image_view
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.85
+      notes: Visualizador de imagens ROS2.
+      extraction_context:
+        references:
+          - "https://github.com/ros-perception/image_pipeline"
+    subscriptions:
+      - id: subd:node_impl:image_view:image_view_node:image
+        topic_name: /image
+        message_type: sensor_msgs/msg/Image
+        qos_profile:
+          reliability: best_effort
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.85
+
+  # ─── rviz2 ───────────────────────────────────────────────────────────────
+  - id: node_impl:rviz2:rviz2
+    package: rviz2
+    executable: rviz2
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.9
+      notes: Visualizador 3D para ROS2.
+      extraction_context:
+        references:
+          - "https://github.com/ros2/rviz"
+    subscriptions:
+      - id: subd:node_impl:rviz2:rviz2:tf
+        topic_name: /tf
+        message_type: tf2_msgs/msg/TFMessage
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 100
+        provenance:
+          extraction_method: annotation
+          confidence: 0.9
+      - id: subd:node_impl:rviz2:rviz2:tf_static
+        topic_name: /tf_static
+        message_type: tf2_msgs/msg/TFMessage
+        qos_profile:
+          reliability: reliable
+          durability: transient_local
+          history: keep_last
+          depth: 100
+        provenance:
+          extraction_method: annotation
+          confidence: 0.9
+
+  # ─── rclcpp_components (component_container) ─────────────────────────────
+  - id: node_impl:rclcpp_components:component_container_isolated
+    package: rclcpp_components
+    executable: component_container_isolated
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.9
+      notes: >
+        Container para composable nodes em processos isolados.
+        Os tópicos publicados/subscritos dependem dos nodes carregados.
+      extraction_context:
+        references:
+          - "https://docs.ros.org/en/humble/Tutorials/Intermediate/Composition.html"
+
+  # ─── custom_topic_cpp (pub) ───────────────────────────────────────────────
+  - id: node_impl:custom_topic_cpp:pub
+    package: custom_topic_cpp
+    executable: pub
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.6
+      notes: Publisher de exemplo (topic_params.launch.py).
+    publishers:
+      - id: pubd:node_impl:custom_topic_cpp:pub:test_topic
+        topic_name: /publisher_node/examples/test_topic
+        message_type: std_msgs/msg/String
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.6
+
+  # ─── topic_pubsub_py (sub) ───────────────────────────────────────────────
+  - id: node_impl:topic_pubsub_py:sub
+    package: topic_pubsub_py
+    executable: sub
+    node_type: standard
+    language: python
+    provenance:
+      extraction_method: annotation
+      confidence: 0.6
+      notes: Subscriber de exemplo (topic_params.launch.py).
+    subscriptions:
+      - id: subd:node_impl:topic_pubsub_py:sub:test_topic
+        topic_name: /publisher_node/examples/test_topic
+        message_type: std_msgs/msg/String
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.6
+
+  # ─── demo_nodes_cpp (talker / listener) ──────────────────────────────────
+  - id: node_impl:demo_nodes_cpp:talker
+    package: demo_nodes_cpp
+    executable: talker
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.95
+      notes: Node de demonstração que publica strings.
+      extraction_context:
+        references:
+          - "https://github.com/ros2/demos"
+    publishers:
+      - id: pubd:node_impl:demo_nodes_cpp:talker:chatter
+        topic_name: /chatter
+        message_type: std_msgs/msg/String
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.95
+
+  - id: node_impl:demo_nodes_cpp:listener
+    package: demo_nodes_cpp
+    executable: listener
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.95
+      notes: Node de demonstração que subscreve strings.
+      extraction_context:
+        references:
+          - "https://github.com/ros2/demos"
+    subscriptions:
+      - id: subd:node_impl:demo_nodes_cpp:listener:chatter
+        topic_name: /chatter
+        message_type: std_msgs/msg/String
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.95

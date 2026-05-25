@@ -1,0 +1,271 @@
+# Layer 1 anotada para os nodes Nav2 presentes em navigation_launch.py
+# Baseada na documentação oficial Nav2: https://docs.nav2.org/
+# extraction_method: annotation (interfaces documentadas)
+
+architecture_id: nav2_runtime_architecture
+configuration_id: default
+
+node_implementations:
+
+  # ─── controller_server ───────────────────────────────────────────────────
+  - id: node_impl:nav2_controller:controller_server
+    package: nav2_controller
+    executable: controller_server
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.8
+      notes: >
+        Interface anotada a partir da documentação Nav2 controller_server.
+        Recebe paths do planner, publica velocidades de controlo.
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-controller-server.html"
+    publishers:
+      - id: pubd:node_impl:nav2_controller:controller_server:cmd_vel
+        topic_name: /cmd_vel_nav
+        message_type: geometry_msgs/msg/TwistStamped
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+    subscriptions:
+      - id: subd:node_impl:nav2_controller:controller_server:odom
+        topic_name: /odom
+        message_type: nav_msgs/msg/Odometry
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+
+  # ─── planner_server ──────────────────────────────────────────────────────
+  - id: node_impl:nav2_planner:planner_server
+    package: nav2_planner
+    executable: planner_server
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.8
+      notes: >
+        Servidor de planeamento global. Recebe goal poses e publica paths.
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-planner-server.html"
+    publishers:
+      - id: pubd:node_impl:nav2_planner:planner_server:plan
+        topic_name: /plan
+        message_type: nav_msgs/msg/Path
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+    subscriptions:
+      - id: subd:node_impl:nav2_planner:planner_server:goal_pose
+        topic_name: /goal_pose
+        message_type: geometry_msgs/msg/PoseStamped
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+
+  # ─── bt_navigator ────────────────────────────────────────────────────────
+  - id: node_impl:nav2_bt_navigator:bt_navigator
+    package: nav2_bt_navigator
+    executable: bt_navigator
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.8
+      notes: >
+        Behavior Tree navigator. Coordena o stack de navegação.
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-bt-navigator.html"
+    subscriptions:
+      - id: subd:node_impl:nav2_bt_navigator:bt_navigator:goal_pose
+        topic_name: /goal_pose
+        message_type: geometry_msgs/msg/PoseStamped
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+
+  # ─── smoother_server ─────────────────────────────────────────────────────
+  - id: node_impl:nav2_smoother:smoother_server
+    package: nav2_smoother
+    executable: smoother_server
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.7
+      notes: Suaviza paths gerados pelo planner.
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-smoother-server.html"
+    subscriptions:
+      - id: subd:node_impl:nav2_smoother:smoother_server:plan
+        topic_name: /plan
+        message_type: nav_msgs/msg/Path
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+
+  # ─── behavior_server ─────────────────────────────────────────────────────
+  - id: node_impl:nav2_behaviors:behavior_server
+    package: nav2_behaviors
+    executable: behavior_server
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.7
+      notes: Servidor de recovery behaviors (spin, backup, wait).
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-behavior-server.html"
+    publishers:
+      - id: pubd:node_impl:nav2_behaviors:behavior_server:cmd_vel
+        topic_name: /cmd_vel_nav
+        message_type: geometry_msgs/msg/TwistStamped
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+
+  # ─── velocity_smoother ───────────────────────────────────────────────────
+  - id: node_impl:nav2_velocity_smoother:velocity_smoother
+    package: nav2_velocity_smoother
+    executable: velocity_smoother
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.7
+      notes: Suaviza comandos de velocidade antes de enviar para o robot.
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-velocity-smoother.html"
+    publishers:
+      - id: pubd:node_impl:nav2_velocity_smoother:velocity_smoother:cmd_vel
+        topic_name: /cmd_vel
+        message_type: geometry_msgs/msg/TwistStamped
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+    subscriptions:
+      - id: subd:node_impl:nav2_velocity_smoother:velocity_smoother:cmd_vel_nav
+        topic_name: /cmd_vel_nav
+        message_type: geometry_msgs/msg/TwistStamped
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+
+  # ─── collision_monitor ───────────────────────────────────────────────────
+  - id: node_impl:nav2_collision_monitor:collision_monitor
+    package: nav2_collision_monitor
+    executable: collision_monitor
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.7
+      notes: Monitoriza colisões e modifica velocidades.
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-collision-monitor.html"
+    publishers:
+      - id: pubd:node_impl:nav2_collision_monitor:collision_monitor:cmd_vel_out
+        topic_name: /cmd_vel
+        message_type: geometry_msgs/msg/TwistStamped
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+    subscriptions:
+      - id: subd:node_impl:nav2_collision_monitor:collision_monitor:scan
+        topic_name: /scan
+        message_type: sensor_msgs/msg/LaserScan
+        qos_profile:
+          reliability: best_effort
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+
+  # ─── waypoint_follower ───────────────────────────────────────────────────
+  - id: node_impl:nav2_waypoint_follower:waypoint_follower
+    package: nav2_waypoint_follower
+    executable: waypoint_follower
+    node_type: lifecycle
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.7
+      notes: Segue uma lista de waypoints sequencialmente.
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-waypoint-follower.html"
+
+  # ─── lifecycle_manager ───────────────────────────────────────────────────
+  - id: node_impl:nav2_lifecycle_manager:lifecycle_manager
+    package: nav2_lifecycle_manager
+    executable: lifecycle_manager
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.9
+      notes: >
+        Gere o ciclo de vida dos nodes Nav2 (configure, activate, deactivate, cleanup).
+      extraction_context:
+        references:
+          - "https://docs.nav2.org/configuration/packages/configuring-lifecycle-manager.html"

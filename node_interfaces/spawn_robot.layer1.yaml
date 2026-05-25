@@ -1,0 +1,200 @@
+# Layer 1 anotada para os nodes em spawn_robot.launch.py
+# Baseada na documentação ROS2 e Gazebo
+# extraction_method: annotation
+
+architecture_id: spawn_robot_runtime_architecture
+configuration_id: default
+
+node_implementations:
+
+  # ─── robot_state_publisher ───────────────────────────────────────────────
+  - id: node_impl:robot_state_publisher:robot_state_publisher
+    package: robot_state_publisher
+    executable: robot_state_publisher
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.95
+      notes: >
+        Publica transformações TF a partir do URDF do robot.
+      extraction_context:
+        references:
+          - "https://github.com/ros/robot_state_publisher"
+    publishers:
+      - id: pubd:node_impl:robot_state_publisher:robot_state_publisher:tf
+        topic_name: /tf
+        message_type: tf2_msgs/msg/TFMessage
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 100
+        provenance:
+          extraction_method: annotation
+          confidence: 0.95
+      - id: pubd:node_impl:robot_state_publisher:robot_state_publisher:tf_static
+        topic_name: /tf_static
+        message_type: tf2_msgs/msg/TFMessage
+        qos_profile:
+          reliability: reliable
+          durability: transient_local
+          history: keep_last
+          depth: 100
+        provenance:
+          extraction_method: annotation
+          confidence: 0.95
+    subscriptions:
+      - id: subd:node_impl:robot_state_publisher:robot_state_publisher:joint_states
+        topic_name: /joint_states
+        message_type: sensor_msgs/msg/JointState
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.95
+
+  # ─── ros_gz_bridge (parameter_bridge) ────────────────────────────────────
+  - id: node_impl:ros_gz_bridge:parameter_bridge
+    package: ros_gz_bridge
+    executable: parameter_bridge
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.85
+      notes: >
+        Bridge entre ROS2 e Gazebo. Tópicos dependem do ficheiro de configuração gz_bridge.yaml.
+      extraction_context:
+        references:
+          - "https://github.com/gazebosim/ros_gz"
+    publishers:
+      - id: pubd:node_impl:ros_gz_bridge:parameter_bridge:odom
+        topic_name: /odom
+        message_type: nav_msgs/msg/Odometry
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+    subscriptions:
+      - id: subd:node_impl:ros_gz_bridge:parameter_bridge:cmd_vel
+        topic_name: /cmd_vel
+        message_type: geometry_msgs/msg/Twist
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.7
+
+  # ─── ros_gz_image (image_bridge) ─────────────────────────────────────────
+  - id: node_impl:ros_gz_image:image_bridge
+    package: ros_gz_image
+    executable: image_bridge
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.85
+      notes: Bridge de imagens entre Gazebo e ROS2.
+      extraction_context:
+        references:
+          - "https://github.com/gazebosim/ros_gz"
+    publishers:
+      - id: pubd:node_impl:ros_gz_image:image_bridge:camera_image
+        topic_name: /camera/image
+        message_type: sensor_msgs/msg/Image
+        qos_profile:
+          reliability: best_effort
+          durability: volatile
+          history: keep_last
+          depth: 1
+        provenance:
+          extraction_method: annotation
+          confidence: 0.8
+
+  # ─── robot_localization (ekf_node) ───────────────────────────────────────
+  - id: node_impl:robot_localization:ekf_node
+    package: robot_localization
+    executable: ekf_node
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.85
+      notes: >
+        Extended Kalman Filter para fusão de odometria e IMU.
+      extraction_context:
+        references:
+          - "https://docs.ros.org/en/humble/p/robot_localization/"
+    publishers:
+      - id: pubd:node_impl:robot_localization:ekf_node:odometry_filtered
+        topic_name: /odometry/filtered
+        message_type: nav_msgs/msg/Odometry
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.85
+    subscriptions:
+      - id: subd:node_impl:robot_localization:ekf_node:odom
+        topic_name: /odom
+        message_type: nav_msgs/msg/Odometry
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.85
+
+  # ─── topic_tools (relay) ─────────────────────────────────────────────────
+  - id: node_impl:topic_tools:relay
+    package: topic_tools
+    executable: relay
+    node_type: standard
+    language: cpp
+    provenance:
+      extraction_method: annotation
+      confidence: 0.9
+      notes: Reencaminha mensagens de um tópico para outro.
+      extraction_context:
+        references:
+          - "https://github.com/ros-tooling/topic_tools"
+    publishers:
+      - id: pubd:node_impl:topic_tools:relay:camera_info_out
+        topic_name: /camera/image/camera_info
+        message_type: sensor_msgs/msg/CameraInfo
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.9
+    subscriptions:
+      - id: subd:node_impl:topic_tools:relay:camera_info_in
+        topic_name: /camera/camera_info
+        message_type: sensor_msgs/msg/CameraInfo
+        qos_profile:
+          reliability: reliable
+          durability: volatile
+          history: keep_last
+          depth: 10
+        provenance:
+          extraction_method: annotation
+          confidence: 0.9
